@@ -1,6 +1,6 @@
 # 卒論
 
-[thesis.pdf](./build/thesis.pdf)
+[thesis.pdf](./build/thesis.pdf){:target="_blank"}
 
 ```sh
 make
