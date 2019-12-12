@@ -1,6 +1,6 @@
 # 卒論
 
-[PDF](./build/thesis.pdf)
+[thesis.pdf](./build/thesis.pdf)
 
 ```sh
 make
