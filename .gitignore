@@ -3,3 +3,9 @@ build/*
 !build/thesis.pdf
 ghr/*
 __latexindent_temp.tex
+
+thesis.fdb_latexmk
+thesis.fls
+thesis.log
+
+bib
