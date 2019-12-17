@@ -7,12 +7,13 @@
 
 本研究で実装を行う環境は，RDMA NICが刺さった監視対象ホストと，本研究における実装を実行するホストの2台で構成する．
 
-監視対象ホストは，Linuxカーネル 4.15.0-72-genericのubuntuであり，PCIeデバイスとして，FPGAボードが刺さっている．
+監視対象ホストは，Linux 4.15.0-72-genericのubuntuであり，PCIeデバイスとして，FPGAボードが刺さっている．
 このFPGAボードは，\ref{chap:related_works}章にて述べたように，dma messageとethernetパケットを相互変換する機能を有しており，
 インターフェースとして，dma_read関数とdma_write関数がlibtlpに用意されている．
 また，このFPGAボードには，IPアドレスとして，192.168.10.1を静的に振ってある．
 
-実装を実行するホストは，Linuxで動作しており，光ファイバーケーブルが刺さるNICを刺している．このNICにはIPアドレスとして，192.168.10.3を静的に振ってある．
+実装を実行するホストは，Linux 4.19.0-6-amd64のDebian busterであり，光ファイバーケーブル(名称はあとで修正)が刺さるNICを刺している．
+このNICにはIPアドレスとして，192.168.10.3を静的に振ってある．
 監視対象ホストに対してRDMAを実行する際は，dma_read関数，あるいはdma_wirte関数を通して192.168.10.1に対してIPパケットを送信している．
 
 図\ref{fig:zentai}にて，全体図を書く
@@ -28,5 +29,3 @@
         \includegraphics[bb=0 0 1000 530,width=15cm]{img/zentai.png}
     \end{center}
 \end{figure}
-
-(この図はあとで修正します．)
