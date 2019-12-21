@@ -48,10 +48,17 @@ call命令などで別の関数を呼ぶ際には，その時点におけるイ�
 
 レジスタを参照して，かつmmuすら自分で参照ができる．
 
-例として，push命令が実行された際の流れを述べる．
-
 CPUレジスタの現在の値は直接知ることができないため，例えばプロセスの一覧を取得したい場合は，コンテキストスイッチ時に退避された値を辿っていく必要がある．
 しかし，上述の通り\verb|task_struct|はビルドされた際のカーネルコンフィグによって，どのメンバが先頭アドレスからどのオフセットに保持されているかは変動する．
+
+\begin{figure}[htbp]
+    \caption{Linuxにおけるmmu}
+    \label{fig:mmu}
+    \begin{center}
+        \includegraphics[bb=0 0 1000 360,width=15cm]{img/tegaki/paging.png}
+    \end{center}
+\end{figure}
+
 
 \section{本研究で保持する情報}
 \label{section:info}
