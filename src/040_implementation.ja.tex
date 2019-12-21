@@ -114,12 +114,25 @@ libtlpでは，RDMAを用いてメモリダンプを取得するためのイン�
     \end{verbatim}
 \end{itembox}
 
+\subsection{カーネルコンフィグの復元}
+
 \section{Linuxカーネルをプリプロセッサに通す}
 
-この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型を確定する．
+この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
+および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
 
 さらに，ソースコード上にある\verb|__phys_addr|の実体を収集する部分に関する実装をより詳しく書く．
 
-\section{工程3}
+\begin{itembox}[l]{init_taskを探す}
+    \begin{verbatim}
+        cd path/to/kernelsource
+        cp path/to/さっき拾った/config path/to/kernelsource/.config
+        make oldconfig
+        # save-tempsオプションを設定
+        make -j9
+    \end{verbatim}
+\end{itembox}
+
+\section{ていうか実装をカーネルに埋め込めばいいのでは}
 
 最後に，集められたデータをもとに，process-listを改造したものに関する説明をここに書く
