@@ -72,25 +72,99 @@ KASLRの簡単な説明と，無効にする理由と無効にしても良い理
 
 \section{実装の全体}
 
-ダンプしてくるということを書く．物理アドレスのマッピングに関しても
+ダンプしてくるということを書く．物理アドレスのマッピングに関しても書く
 
-次の工程として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，task_struct型を確定する．
-さらに，ソースコード上にある__phys_addrの実体を収集する．
+実験における第一段階として，\ref{section:want}で述べたように，監視対象ホストのカーネルコンフィグおよび\verb|init_task|の仮想アドレスを知ることを目指す．
+そこで，本研究では，この情報をメモリ上から探す．\ref{section:mem_dump}で述べる実装では，取得できるメモリダンプを全て取得し，解析する手法に関して述べる．
+
+次の工程として，それをリストアップ．
+
+次の工程として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型を確定する．
+さらに，ソースコード上にある\verb|__phys_addr|関数の実体を収集する．
 
 最後に，この工程で得られた情報をもとに，libtlpで提唱されている手法を用いて，プロセスの一覧を正しく取得できることを確認する．
 
-\section{工程1}
+\section{mem\_dump}
+\label{section:mem_dump}
 
-第一の工程として，RDMA NICを用いて，監視対象ホストのメモリを全探索し，メモリに落ちているSystem.mapのうち，init_taskが配置されている仮想アドレス空間に関する情報と，
-Linuxカーネルにおける__phys_addr関数，task_struct型を決定するためのカーネルコンフィグに関する情報を収集することは\ref{chap:related_works}章で述べた．
+第一の工程として，メモリの全ての情報を取得する．ソースコードは以下である．この実装を実装ホストで実行し，出力結果をファイルに格納する．
+この実装では，libtlpを通して，監視対象ホストのメモリを全探索する．この実装の実行には長い時間（何分？）かかるため，アトミックな情報ではない．
+そのため，ここで取得したメモリダンプは，解析には使えない．
+ここで取得したメモリダンプは，System.mapのうち，\verb|init_task|が配置されている仮想アドレス空間に関する情報および，Linuxカーネル 4.15.0におけるカーネルコンフィグに関する情報を収集するためのものである．
 
-（本セクションでは，その実装を詳しく書く．ダンプしまくるやつの説明をここに書く）
+% Linuxカーネルにおける\verb|__phys_addr|関数，\verb|task_struct|型を決定するためのカーネルコンフィグに関する情報を収集することは\ref{chap:related_works}章で述べた．
 
-\section{工程2}
+\begin{itembox}[l]{実行方法}
+    \begin{verbatim}
+        ./dump_mem > ~/Desktop/work9/dump
+    \end{verbatim}
+\end{itembox}
 
-収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，task_struct型を確定する．
-さらに，ソースコード上にある__phys_addrの実体を収集する部分に関する実装をより詳しく書く．
+\begin{itembox}[l]{mem_dump.c}
+    \begin{verbatim}
+        ここにソースを貼り付ける．
+    \end{verbatim}
+\end{itembox}
 
-\section{工程3}
+\section{init\_taskおよびカーネルコンフィグの取得}
+\label{section:strings}
+
+この章では，\ref{mem_dump}で取得した，メモリダンプから，必要な情報を取得する．
+前処理として，以下に示すように，メモリダンプに対してstringsコマンドをかけ，検索しやすくする．以後のファイル読み込みには，\verb|str_list|を用いる．
+
+\begin{itembox}[l]{strings}
+    \begin{verbatim}
+        strings dump > str_list
+    \end{verbatim}
+\end{itembox}
+
+\subsection{init\_taskに関する情報の復元}
+
+\label{section:mem_dump}で作成した\verb|str_list|に対して，\verb|init_task|に関する行をgrepコマンドを用いて探す．
+
+\begin{itembox}[l]{init_taskを探す}
+    \begin{verbatim}
+        cat str_list | grep "D init_task"
+        # ffffffff82413480 D init_task
+    \end{verbatim}
+\end{itembox}
+
+\subsection{カーネルコンフィグの復元}
+
+Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下に示す通りである（あとではるかも）
+
+これらのコンフィグに関する情報を以下のスクリプトで読み出す．
+
+カーネルコンフィグには，各設定項目に対する値として，y,mや文字列，数値などがあり，設定しない項目については，その行がコメント行になるのに加えて，\verb|is not set|という文言が付け足される．
+このスクリプトによってカーネルコンフィグ，ビルド時における\verb|.config|というファイルを生成する．以下の章では，このファイルを設定ファイルとして，ビルドを行う．
+
+\begin{itembox}[l]{search config script}
+    \begin{verbatim}
+        未実装
+    \end{verbatim}
+\end{itembox}
+
+\section{Linuxカーネルをプリプロセッサに通す}
+
+この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
+および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
+
+さらに，ソースコード上にある\verb|__phys_addr|の実体を収集する部分に関する実装をより詳しく書く．
+
+\begin{itembox}[l]{makeoldconfig}
+    \begin{verbatim}
+        cd path/to/kernelsource
+        cp path/to/さっき拾った/config path/to/kernelsource/.config
+        make oldconfig
+        # save-tempsオプションを設定
+        make -j9
+    \end{verbatim}
+\end{itembox}
+
+\section{ていうか実装をカーネルに埋め込めばいいのでは}
 
 最後に，集められたデータをもとに，process-listを改造したものに関する説明をここに書く
+
+\section{実装のまとめ}
+
+この章は，相当長くなるので，まとめを書く．
