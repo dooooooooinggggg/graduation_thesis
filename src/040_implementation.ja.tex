@@ -12,7 +12,7 @@
 \section{実装の概要}
 
 本研究では，RDMAを用いて，動作中のマシンのメモリの値を取得していくことで，リモートホストから監視対象ホストのオペレーティングシステムのコンテキストを復元していくことを目指す．
-この目的を実現するために，本研究では，\cite{246316}を用いて実験を行う．
+この目的を実現するために，本研究では，NetTLP\cite{246316}を用いて実験を行う．
 
 \section{nettlp}
 \label{section:nettlp}
@@ -120,7 +120,7 @@ KASLRの簡単な説明と，無効にする理由と無効にしても良い理
 
 \subsection{init\_taskに関する情報の復元}
 
-\label{section:mem_dump}で作成した\verb|str_list|に対して，\verb|init_task|に関する行をgrepコマンドを用いて探す．
+\ref{section:mem_dump}で作成した\verb|str_list|に対して，\verb|init_task|に関する行をgrepコマンドを用いて探す．
 
 \begin{itembox}[l]{init_taskを探す}
     \begin{verbatim}
