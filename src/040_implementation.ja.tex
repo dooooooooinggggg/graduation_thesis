@@ -14,10 +14,10 @@
 本研究では，RDMAを用いて，動作中のマシンのメモリの値を取得していくことで，リモートホストから監視対象ホストのオペレーティングシステムのコンテキストを復元していくことを目指す．
 この目的を実現するために，本研究では，NetTLP\cite{246316}を用いて実験を行う．
 
-\section{nettlp}
+\section{NetTLP}
 \label{section:nettlp}
 
-nettlp本来の目的は，PCIeデバイスの開発プラットフォームである．（リファレンス）
+NetTLPの本来の目的は，PCIeデバイスの開発プラットフォームである．
 
 その機能の一つとして，DMA messageとethernetパケットを相互変換する機能がある．
 \ref{chap:related_works}で述べたが，RDMAのInfiniband実装は，制限が多い．（もう少し詳しく）
@@ -145,6 +145,7 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
 \end{itembox}
 
 \section{Linuxカーネルをプリプロセッサに通す}
+\label{section:preprocess}
 
 この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
 および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
@@ -161,9 +162,11 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
     \end{verbatim}
 \end{itembox}
 
-\section{ていうか実装をカーネルに埋め込めばいいのでは}
+\section{得られた構造体を元に，実行ファイルを生成}
 
-最後に，集められたデータをもとに，process-listを改造したものに関する説明をここに書く
+ていうか実装をカーネルに埋め込めばいいのでは
+
+\ref{section:preprocess}で得ることができたソースをもとに，process-listを改造したものに関する説明をここに書く
 
 \section{実装のまとめ}
 
