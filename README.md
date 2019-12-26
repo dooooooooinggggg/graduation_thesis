@@ -1,6 +1,6 @@
 # 卒論
 
-[thesis.pdf](./build/thesis.pdf)
+[![PDF View](./assets/pdf_button.png)](./build/thesis.pdf)
 
 ```sh
 make
