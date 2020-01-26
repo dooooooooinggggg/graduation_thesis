@@ -86,30 +86,48 @@ kconfigの結果によって，フィールドが存在するか否か，また�
 三点目は，Linuxカーネルのバージョンに関する情報である．
 本研究では，実験する際に，監視対象ホストのカーネルのバージョンと同じソースコードを使用した上で実験を行う．
 当然，Linuxカーネルのバージョンに関する情報は知っている必要がある．
-Linuxカーネルのバージョンは，実装ホストは知っている情報とする．
+Linuxカーネルのバージョンは，実装ホストは持っている情報とする．
 \ref{section:want}で述べたもののうち，Linuxカーネルのバージョンは通知することとする
 
-また，KASLR（kernel address space layout randomization）を無効にしてある．
+また，KASLR（kernel address space layout randomization）を無効にしてある．理由については，\ref{subsection:kaslr}にて述べる．
 
 \subsection{KASLR}
+\label{subsection:kaslr}
 
 KASLRの簡単な説明と，無効にする理由と無効にしても良い理由を書く．
+
+KASLRとは，kernel address space layout randomizationの略であり，カーネル領域における仮想アドレス空間のランダム化に関する仕組みのことである．
+基本的な仕組みは，カーネルに限らず，プロセスの仮想アドレス空間のランダム化を実現する，ASLR(address space layout randomization)がある．
+ASLRでは，実行ファイル内に存在するコードセグメントの仮想アドレスを，プロセスの実行のたびにランダムにする．
+
+% todo: あれ，どのセグメントだっけ
+ASLRが無効な状態でプロセスを実行すると，コードセグメントなどが常に一定の仮想アドレス空間にロードされるため，攻撃者にとって，仮想アドレスの推測が容易になってしまう．
+これを防ぐための機構がASLRである．
+
+KASLRでは，この考え方をカーネルの起動時にも適用するようにしたものである．
+
+% todo: ここに説明を加筆
+
+KASLRは，本研究においては，有効にしてもいい．ちょっと待て．
 
 \section{実装の全体}
 
 ダンプしてくるということを書く．物理アドレスのマッピングに関しても書く
 
-実験における第一段階として，\ref{section:want}で述べたように，監視対象ホストのカーネルコンフィグおよび\verb|init_task|の仮想アドレスを知ることを目指す．
+実験における第一段階として，\ref{section:want}で述べたように，監視対象ホストのカーネルコンフィグおよび\verb|init_task|の先頭アドレスの仮想アドレスを知ることを目指す．
 そこで，本研究では，この情報をメモリ上から探す．\ref{section:mem_dump}で述べる実装では，取得できるメモリダンプを全て取得し，解析する手法に関して述べる．
 
-次の工程として，それをリストアップ．
+第二段階として，与えられたLinuxカーネルのバージョンのソースコードより，カーネルコンフィグの一覧を抽出し，その文字列を取得したメモリダンプから文字列探索をする．
+文字列探索の結果取得したカーネルコンフィグの値をパースし，メモリ上から監視対象ホストのカーネルコンフィグを復元する．
+\ref{section:restore_kconfig}で述べる実装では，カーネルコンフィグを復元する際の実装の詳細に関して記述する．
 
-次の工程として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型を確定する．
+第三段階として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型を確定する．
+また，\ref{section:approach}で述べた，監視対象ホストで動いているプロセスの一覧情報を取得するための
 さらに，ソースコード上にある\verb|__phys_addr|関数の実体を収集する．
 
 最後に，この工程で得られた情報をもとに，libtlpで提唱されている手法を用いて，プロセスの一覧を正しく取得できることを確認する．
 
-\section{mem\_dump}
+\section{mem\_dump.c}
 \label{section:mem_dump}
 
 第一の工程として，メモリの全ての情報を取得する．ソースコードは以下である．この実装を実装ホストで実行し，出力結果をファイルに格納する．
@@ -131,15 +149,111 @@ KASLRの簡単な説明と，無効にする理由と無効にしても良い理
     \end{verbatim}
 \end{itembox}
 
-\section{init\_taskおよびカーネルコンフィグの取得}
-\label{section:strings}
+\section{カーネルコンフィグの復元}
+\label{section:restore_kconfig}
 
-この章では，\ref{mem_dump}で取得した，メモリダンプから，必要な情報を取得する．
-前処理として，以下に示すように，メモリダンプに対してstringsコマンドをかけ，検索しやすくする．以後のファイル読み込みには，\verb|str_list|を用いる．
+Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下に示す通りである（あとではるかも）
+
+これらのコンフィグに関する情報を以下のスクリプトで読み出す．
+
+カーネルコンフィグには，各設定項目に対する値として，y,mや文字列，数値などがあり，設定しない項目については，その行がコメント行になるのに加えて，\verb|is not set|という文言が付け足される．
+これらの特徴を踏まえ，本研究では，restore_kconfig.pyというスクリプトをPythonを用いて実装した．
+このスクリプトでは，得られたメモリダンプから，stringsコマンドを用いて文字列を抽出し，そこからkconfigの特徴である，CONFIGという文字列を含む行をgrepコマンドを用いて抽出する．
+実行するシェルスクリプトは以下である．
 
 \begin{itembox}[l]{strings}
     \begin{verbatim}
-        strings dump > str_list
+        strings dump | grep CONFIG > str_list
+    \end{verbatim}
+\end{itembox}
+
+生成されたファイルに対して，上述したスクリプトを実行し，ファイルに書き出す．ここでは書き出すファイル名をrestored_kconfigとする．
+
+\begin{itembox}[l]{exec restore_kconfig.py}
+    \begin{verbatim}
+        python restore_kconfig.py str_list > restored_kconfig
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{search config script}
+    \begin{verbatim}
+        実装した
+    \end{verbatim}
+\end{itembox}
+
+上述した処理によって得られたrestored_kconfigというファイルを，後述するビルド時にコンフィグとして利用する．
+
+\section{Linuxカーネルをプリプロセッサに通す}
+\label{section:preprocess}
+
+この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
+および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
+
+また，pid 0のプロセスのtask_struct構造体の先頭アドレスを知るため，またそれぞれのフィールドの先頭アドレスからのオフセットを確定させるため，オフセットを得る処理を施す．
+
+まずは，事前に知らされた情報であるLinuxカーネルのバージョンより，適合したカーネルを取得する．
+本研究の実装においては，バージョンは，4.15.0-72-genericである．
+
+このソースコードに対して，\ref{section:restore_kconfig}で生成したファイルをコンフィグとして埋め込む．
+
+\begin{itembox}[l]{build Linux kernel}
+    \begin{verbatim}
+        cd /path/to/linux-source-4.15.0
+        cp /path/to/restored_kconfig .config
+    \end{verbatim}
+\end{itembox}
+
+また，この工程では，カーネルビルド時におけるtask_struct型をバイナリではなくテキストファイルとして取得する必要があるため，
+マクロを適用した直後の状態，すなわちプリプロセッサに通した直後の状態を保存するため，ビルド時の設定に変更を加える．
+Linuxカーネルにおいては，ビルド時にMakefileを使用するため，このファイルを編集する．
+具体的には，Linuxカーネル，バージョン4.15.0-72-genericにおいては，Makefileの447行目付近に，\verb|-save-temps|オプションを以下のような形で設定する．
+
+\begin{itembox}[l]{-save-tempsオプションの設定・変更前}
+    \begin{verbatim}
+        LINUXINCLUDE   += -Iubuntu/include $(if $(KBUILD_SRC),-I$(srctree)/ubuntu/include)
+
+        KBUILD_AFLAGS   := -D__ASSEMBLY__
+        KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+                -fno-strict-aliasing -fno-common -fshort-wchar \
+                -Werror-implicit-function-declaration \
+                -Wno-format-security \
+                -std=gnu89
+        KBUILD_CPPFLAGS := -D__KERNEL__
+        KBUILD_AFLAGS_KERNEL :=
+        KBUILD_CFLAGS_KERNEL :=
+        KBUILD_AFLAGS_MODULE  := -DMODULE
+        KBUILD_CFLAGS_MODULE  := -DMODULE
+        KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{-save-tempsオプションの設定・変更後}
+    \begin{verbatim}
+        LINUXINCLUDE   += -Iubuntu/include $(if $(KBUILD_SRC),-I$(srctree)/ubuntu/include)
+
+        KBUILD_AFLAGS   := -D__ASSEMBLY__
+        KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+                -fno-strict-aliasing -fno-common -fshort-wchar \
+                -Werror-implicit-function-declaration \
+                -Wno-format-security \
+                -std=gnu89
+
+        KBUILD_CFLAGS += -save-temps=obj
+
+        KBUILD_CPPFLAGS := -D__KERNEL__
+        KBUILD_AFLAGS_KERNEL :=
+        KBUILD_CFLAGS_KERNEL :=
+        KBUILD_AFLAGS_MODULE  := -DMODULE
+        KBUILD_CFLAGS_MODULE  := -DMODULE
+        KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+    \end{verbatim}
+\end{itembox}
+
+設定ファイルを書き終わったらビルドを行う．
+
+\begin{itembox}[l]{ビルド}
+    \begin{verbatim}
+        make -j10
     \end{verbatim}
 \end{itembox}
 
@@ -151,39 +265,6 @@ KASLRの簡単な説明と，無効にする理由と無効にしても良い理
     \begin{verbatim}
         cat str_list | grep "D init_task"
         # ffffffff82413480 D init_task
-    \end{verbatim}
-\end{itembox}
-
-\subsection{カーネルコンフィグの復元}
-
-Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下に示す通りである（あとではるかも）
-
-これらのコンフィグに関する情報を以下のスクリプトで読み出す．
-
-カーネルコンフィグには，各設定項目に対する値として，y,mや文字列，数値などがあり，設定しない項目については，その行がコメント行になるのに加えて，\verb|is not set|という文言が付け足される．
-このスクリプトによってカーネルコンフィグ，ビルド時における\verb|.config|というファイルを生成する．以下の章では，このファイルを設定ファイルとして，ビルドを行う．
-
-\begin{itembox}[l]{search config script}
-    \begin{verbatim}
-        未実装
-    \end{verbatim}
-\end{itembox}
-
-\section{Linuxカーネルをプリプロセッサに通す}
-\label{section:preprocess}
-
-この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
-および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
-
-さらに，ソースコード上にある\verb|__phys_addr|の実体を収集する部分に関する実装をより詳しく書く．
-
-\begin{itembox}[l]{makeoldconfig}
-    \begin{verbatim}
-        cd path/to/kernelsource
-        cp path/to/さっき拾った/config path/to/kernelsource/.config
-        make oldconfig
-        # save-tempsオプションを設定
-        make -j9
     \end{verbatim}
 \end{itembox}
 
