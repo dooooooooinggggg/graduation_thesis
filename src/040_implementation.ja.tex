@@ -257,6 +257,13 @@ Linuxカーネルにおいては，ビルド時にMakefileを使用するため�
     \end{verbatim}
 \end{itembox}
 
+\section{task_struct構造体の確定}
+
+Linuxカーネルのビルドが完了すると，上述したMakefileのKBUILD_CFLAGSの設定によって，中間ファイルを含む巨大なディレクトリおよび，vmlinux,bzImageが作成される．
+本研究では，このビルドされたbzImageは使用しない．
+
+\subsection{init_taskの開始アドレスの算出}
+
 \subsection{init\_taskに関する情報の復元}
 
 \ref{section:mem_dump}で作成した\verb|str_list|に対して，\verb|init_task|に関する行をgrepコマンドを用いて探す．
