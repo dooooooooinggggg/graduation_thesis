@@ -1,5 +1,19 @@
 \begin{eabstract}
 
-  abst
+Managers of a large number of physical computers, such as a large data center, are faced with a situation in which computers are analyzed in addition to normal surveillance and investigation of causes in an emergency.
+However, if you rent a computer to a customer, you often do not have root privileges.
+
+Existing monitoring methods include monitoring software that starts as a process on the monitored host and a method that starts and debugs as a VM.
+In an emergency, for example, when a kernel panic occurs, the core dump is analyzed.
+
+However, in managing a large number of physical computers, it is difficult to introduce various solutions to address the problem.
+
+Therefore, in this research, under the NetTLP \ cite {246316} environment, which is a debugging environment that operates even if the operating system is stopped as long as the power is on, for a large number of computers,
+The purpose of this study is to perform a memory search using the RDMA function implemented in NetTLP, and to restore the context of the operating system of a physical computer over a running network.
+
+As an implementation and evaluation for the purpose, we show that the process list of the monitored host can be restored with limited information.
+
+Also, when restoring the process list from only operating system version information and non-atomic memory dumps,
+A method to derive internal values ​​that differ for each machine and to absorb the differences for each machine was also shown.
 
 \end{eabstract}
