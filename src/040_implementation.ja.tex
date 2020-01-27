@@ -73,15 +73,15 @@ libtlpでは，RDMAを用いてメモリダンプを取得するためのイン�
 \ref{chap:approach}章で述べたように，オペレーティングシステムのコンテキストの復元，
 その中でもLinuxにおいてプロセス情報の一覧を出すために必要な情報は以下の三点である．
 
-一点目は，init_taskという，pidが0のプロセスのtask_struct構造体の開始アドレスである．
+一点目は，init_taskという，pidが0のプロセスのtask\_struct構造体の開始アドレスである．
 init_taskはコンピュータが起動する際に最初に実行されるプロセスであり，全てのプロセスは親プロセスを辿っていくことで，このプロセスにたどり着くことができる．
 この情報は，実験に際して実装を実行するホストは，知らないこととする．（いいのか？）
 
-二点目は，task_struct構造体の各フィールドの有無である．
+二点目は，task\_struct構造体の各フィールドの有無である．
 Linuxカーネルでは，ビルドする際に，数千に及ぶ設定を記述し，マクロとして設定される．
-この設定，kconfigによってtask_structは，どのフィールドを有効にするか，マクロとして定義された構造体の実体は何になるのか，などが決まる．
+この設定，kconfigによってtask\_structは，どのフィールドを有効にするか，マクロとして定義された構造体の実体は何になるのか，などが決まる．
 kconfigの結果によって，フィールドが存在するか否か，またそのフィールドが先頭アドレスからどのくらいのオフセットを持った状態で保持されているかが決まる．
-すなわち，kconfigの情報によって，task_structのサイズや各フィールドの先頭アドレスからのオフセットが確定する．
+すなわち，kconfigの情報によって，task\_structのサイズや各フィールドの先頭アドレスからのオフセットが確定する．
 このkconfigに関する情報は実験に際して実装を実行するホストは知らないこととする．
 
 三点目は，Linuxカーネルのバージョンに関する情報である．
@@ -122,7 +122,7 @@ KASLRでは，この考え方をカーネルの起動時にも適用するよう
 文字列探索の結果取得したカーネルコンフィグの値をパースし，メモリ上から監視対象ホストのカーネルコンフィグを復元する．
 \ref{section:restore_kconfig}で述べる実装では，カーネルコンフィグを復元する際の実装の詳細に関して記述する．
 
-第三段階として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型を確定する．
+第三段階として，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，task\_struct型を確定する．
 また，\ref{section:approach}で述べた，監視対象ホストで動いているプロセスの一覧情報を取得するための
 さらに，ソースコード上にある\verb|__phys_addr|関数の実体を収集する．
 
@@ -136,11 +136,11 @@ KASLRでは，この考え方をカーネルの起動時にも適用するよう
 そのため，ここで取得したメモリダンプは，解析には使えない．
 ここで取得したメモリダンプは，System.mapのうち，\verb|init_task|が配置されている仮想アドレス空間に関する情報および，Linuxカーネル 4.15.0におけるカーネルコンフィグに関する情報を収集するためのものである．
 
-% Linuxカーネルにおける\verb|__phys_addr|関数，\verb|task_struct|型を決定するためのカーネルコンフィグに関する情報を収集することは\ref{chap:related_works}章で述べた．
+% Linuxカーネルにおける\verb|__phys_addr|関数，task\_struct型を決定するためのカーネルコンフィグに関する情報を収集することは\ref{chap:related_works}章で述べた．
 
 \begin{itembox}[l]{実行方法}
     \begin{verbatim}
-        ./dump_mem > ~/Desktop/work9/dump
+./dump_mem > dump
     \end{verbatim}
 \end{itembox}
 
@@ -164,7 +164,7 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
 
 \begin{itembox}[l]{strings}
     \begin{verbatim}
-        strings dump | grep CONFIG > str_list
+strings dump | grep CONFIG > str_list
     \end{verbatim}
 \end{itembox}
 
@@ -172,91 +172,91 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
 
 \begin{itembox}[l]{exec restore_kconfig.py}
     \begin{verbatim}
-        python restore_kconfig.py str_list > restored_kconfig
+python restore_kconfig.py str_list > restored_kconfig
     \end{verbatim}
 \end{itembox}
 
 \begin{itembox}[l]{search config script}
     \begin{verbatim}
-        import sys
+import sys
 
-        configs = [
-            "CONFIG_64BIT", "CONFIG_X86_64", "CONFIG_X86",
-            "CONFIG_INSTRUCTION_DECODER", "CONFIG_OUTPUT_FORMAT",
-            "CONFIG_ARCH_DEFCONFIG", "CONFIG_LOCKDEP_SUPPORT",
-            # 省略
-            "CONFIG_ARCH_HAS_PMEM_API", "CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE",
-            "CONFIG_SBITMAP", "CONFIG_PARMAN", "CONFIG_STRING_SELFTEST"
-        ]
+configs = [
+    "CONFIG_64BIT", "CONFIG_X86_64", "CONFIG_X86",
+    "CONFIG_INSTRUCTION_DECODER", "CONFIG_OUTPUT_FORMAT",
+    "CONFIG_ARCH_DEFCONFIG", "CONFIG_LOCKDEP_SUPPORT",
+    # 省略
+    "CONFIG_ARCH_HAS_PMEM_API", "CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE",
+    "CONFIG_SBITMAP", "CONFIG_PARMAN", "CONFIG_STRING_SELFTEST"
+]
 
-        # 有効な文字列が見つかった場合は1を返す
-        def classification(l, s):
+# 有効な文字列が見つかった場合は1を返す
+def classification(l, s):
 
-            if "#if" in l or "#endif" in l:
-                # sys.stderr.write("No!! -> Macro, "+l)
-                return 0
+    if "#if" in l or "#endif" in l:
+        # sys.stderr.write("No!! -> Macro, "+l)
+        return 0
 
-            if l[:3] != "CON" and l[:3] != "# C":
-                # sys.stderr.write("No!! -> NOT CONFIG, "+l)
-                return 0
+    if l[:3] != "CON" and l[:3] != "# C":
+        # sys.stderr.write("No!! -> NOT CONFIG, "+l)
+        return 0
 
-            if s + "=y" in l:
-                print(s + "=y")
-                return 1
-            elif s + "=m" in l:
-                print(s + "=m")
-                return 1
-            elif s + " is not set" in l:
-                print("# " + s + " is not set")
-                return 1
-            elif s + '=' in l:
-                print(l)
-                return 1
-            else:
-                # sys.stderr.write("No!! -> No match, "+l)
-                return 0
+    if s + "=y" in l:
+        print(s + "=y")
+        return 1
+    elif s + "=m" in l:
+        print(s + "=m")
+        return 1
+    elif s + " is not set" in l:
+        print("# " + s + " is not set")
+        return 1
+    elif s + '=' in l:
+        print(l)
+        return 1
+    else:
+        # sys.stderr.write("No!! -> No match, "+l)
+        return 0
 
     \end{verbatim}
 \end{itembox}
 
 \begin{itembox}[l]{search config script2}
     \begin{verbatim}
-        def search_config_str(file_name, s):
-            ld = open(file_name)
-            lines = ld.readlines()
-            ld.close()
+def search_config_str(file_name, s):
+    ld = open(file_name)
+    lines = ld.readlines()
+    ld.close()
 
-            for line in lines:
-                if line.find(s) >= 0:
-                    if classification(line[:-1], s):
-                        return 1
-            return 0
-
-
-        def search(file_name):
-            for s in configs:
-                # print("Searching "+s+" .....")
-                if not search_config_str(file_name, s):
-                    # print("# Cannot find " + s)
-                    sys.stderr.write("# Cannot find " + s)
+    for line in lines:
+        if line.find(s) >= 0:
+            if classification(line[:-1], s):
+                return 1
+    return 0
 
 
-        def usage():
-            print("usage: python find_kconfig.py path/to/str_list")
+def search(file_name):
+    for s in configs:
+        # print("Searching "+s+" .....")
+        if not search_config_str(file_name, s):
+            # print("# Cannot find " + s)
+            sys.stderr.write("# Cannot find " + s)
 
 
-        def main():
-            args = sys.argv
-            if len(args) < 2:
-                usage()
-                return 0
-
-            file_name = args[1]
-            search(file_name)
+def usage():
+    print("usage: python find_kconfig.py path/to/str_list")
 
 
-        if __name__ == "__main__":
-            main()
+def main():
+    args = sys.argv
+    if len(args) < 2:
+        usage()
+        return 0
+
+    file_name = args[1]
+    search(file_name)
+
+
+if __name__ == "__main__":
+    main()
 
     \end{verbatim}
 \end{itembox}
@@ -266,14 +266,12 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
 \section{Linuxカーネルをプリプロセッサに通す}
 \label{section:preprocess}
 
-この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，\verb|task_struct|型，
+この工程では，収集したカーネルコンフィグを元に手元のコンピュータでLinuxカーネルのソースコードに対してプリプロセスの処理を行い，task\_struct型，
 および\verb|__phys_addr|関数など，\verb|process-list.c|の影響のあるソースコードを確定する．
 
-また，pid 0のプロセスのtask_struct構造体の先頭アドレスを知るため，またそれぞれのフィールドの先頭アドレスからのオフセットを確定させるため，オフセットを得る処理を施す．
+また，pid 0のプロセスのtask\_struct構造体の先頭アドレスを知るため，またそれぞれのフィールドの先頭アドレスからのオフセットを確定させるため，オフセットを得る処理を施す．
 
 まずは，事前に知らされた情報であるLinuxカーネルのバージョンより，適合したカーネルを取得する．
-本研究の実装においては，バージョンは，4.15.0-74-genericである．
-
 このソースコードに対して，\ref{section:restore_kconfig}で生成したファイルをコンフィグとして埋め込む．
 
 \begin{itembox}[l]{build Linux kernel}
@@ -283,45 +281,45 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
     \end{verbatim}
 \end{itembox}
 
-また，この工程では，カーネルビルド時におけるtask_struct型をバイナリではなくテキストファイルとして取得する必要があるため，
+また，この工程では，カーネルビルド時におけるtask\_struct型をバイナリではなくテキストファイルとして取得する必要があるため，
 マクロを適用した直後の状態，すなわちプリプロセッサに通した直後の状態を保存するため，ビルド時の設定に変更を加える．
 Linuxカーネルにおいては，ビルド時にMakefileを使用するため，このファイルを編集する．
-具体的には，Linuxカーネル，バージョン4.15.0-72-genericにおいては，Makefileの447行目付近に，\verb|-save-temps|オプションを以下のような形で設定する．
+例として，Linuxカーネル，バージョン4.15.0-74-genericにおいては，Makefileの447行目付近に，\verb|-save-temps|オプションを以下のような形で設定する．
 
 \begin{itembox}[l]{-save-tempsオプションの設定・変更前}
     \begin{verbatim}
-        KBUILD_AFLAGS   := -D__ASSEMBLY__
-        KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-                -fno-strict-aliasing -fno-common -fshort-wchar \
-                -Werror-implicit-function-declaration \
-                -Wno-format-security \
-                -std=gnu89
-        KBUILD_CPPFLAGS := -D__KERNEL__
-        KBUILD_AFLAGS_KERNEL :=
-        KBUILD_CFLAGS_KERNEL :=
-        KBUILD_AFLAGS_MODULE  := -DMODULE
-        KBUILD_CFLAGS_MODULE  := -DMODULE
-        KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+KBUILD_AFLAGS   := -D__ASSEMBLY__
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+        -fno-strict-aliasing -fno-common -fshort-wchar \
+        -Werror-implicit-function-declaration \
+        -Wno-format-security \
+        -std=gnu89
+KBUILD_CPPFLAGS := -D__KERNEL__
+KBUILD_AFLAGS_KERNEL :=
+KBUILD_CFLAGS_KERNEL :=
+KBUILD_AFLAGS_MODULE  := -DMODULE
+KBUILD_CFLAGS_MODULE  := -DMODULE
+KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
     \end{verbatim}
 \end{itembox}
 
 \begin{itembox}[l]{-save-tempsオプションの設定・変更後}
     \begin{verbatim}
-        KBUILD_AFLAGS   := -D__ASSEMBLY__
-        KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-                -fno-strict-aliasing -fno-common -fshort-wchar \
-                -Werror-implicit-function-declaration \
-                -Wno-format-security \
-                -std=gnu89
+KBUILD_AFLAGS   := -D__ASSEMBLY__
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+        -fno-strict-aliasing -fno-common -fshort-wchar \
+        -Werror-implicit-function-declaration \
+        -Wno-format-security \
+        -std=gnu89
 
-        KBUILD_CFLAGS += -save-temps=obj
+KBUILD_CFLAGS += -save-temps=obj
 
-        KBUILD_CPPFLAGS := -D__KERNEL__
-        KBUILD_AFLAGS_KERNEL :=
-        KBUILD_CFLAGS_KERNEL :=
-        KBUILD_AFLAGS_MODULE  := -DMODULE
-        KBUILD_CFLAGS_MODULE  := -DMODULE
-        KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+KBUILD_CPPFLAGS := -D__KERNEL__
+KBUILD_AFLAGS_KERNEL :=
+KBUILD_CFLAGS_KERNEL :=
+KBUILD_AFLAGS_MODULE  := -DMODULE
+KBUILD_CFLAGS_MODULE  := -DMODULE
+KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
     \end{verbatim}
 \end{itembox}
 
@@ -329,52 +327,52 @@ Linuxカーネルにおいては，ビルド時にMakefileを使用するため�
 
 \begin{itembox}[l]{ビルド}
     \begin{verbatim}
-        make -j10
+make -j10
     \end{verbatim}
 \end{itembox}
 
-\section{task_struct構造体の確定}
+\section{task\_struct構造体の確定}
 \label{section:define_task_struct}
 
-本セクションでは，\ref{section:preprocess}で述べた工程を経た結果生成された中間ファイルから，task_struct構造体を導出し，プロセス情報一覧の表示に必要なフィールドのオフセットを求める．
+本セクションでは，\ref{section:preprocess}で述べた工程を経た結果生成された中間ファイルから，task\_struct構造体を導出し，プロセス情報一覧の表示に必要なフィールドのオフセットを求める．
 
 Linuxカーネルのビルドが完了すると，上述したMakefileのKBUILD_CFLAGSの設定によって，中間ファイルを含む巨大なディレクトリおよび，vmlinux,bzImageが作成される．
 本研究では，このビルドされたbzImageは使用しない．
 
 ビルドの際に，プリプロセッサの出力を残したことで，ソースコード中の全てのマクロおよびincludeされたファイルが展開された状態のソースコードがファイルとして残っている．
-例として/kernel/pid.cをあげると，このファイルでは，task_struct構造体を呼び出している箇所があるが，このファイルをプリプロセッサに通すことで，pid.iが作成される．
-pid.iを通して見てみると，task_struct構造体が全て展開され，そこから参照される全ての構造体やtypedefの情報がソースコード上にあることがわかる．
+例として/kernel/pid.cをあげると，このファイルでは，task\_struct構造体を呼び出している箇所があるが，このファイルをプリプロセッサに通すことで，pid.iが作成される．
+pid.iを通して見てみると，task\_struct構造体が全て展開され，そこから参照される全ての構造体やtypedefの情報がソースコード上にあることがわかる．
 
-この中間ファイルから，task_structおよびそこから参照される全ての要素を抽出し，以下のソースコードの\verb|struct task_struct{};|と書かれている部分に記述する．
-このファイルをビルドすることで，task_struct構造体の各フィールドのオフセットを導出する．
+この中間ファイルから，task\_structおよびそこから参照される全ての要素を抽出し，以下のソースコードの\verb|struct task_struct{};|と書かれている部分に記述する．
+このファイルをビルドすることで，task\_struct構造体の各フィールドのオフセットを導出する．
 
 \begin{itembox}[l]{print_offset.cの雛形}
     \begin{verbatim}
-        #include <stdio.h>
-        #include <stddef.h>
-        #include <unistd.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <unistd.h>
 
-        struct task_struct{};
+struct task_struct{};
 
-        int main()
-        {
-            size_t size = sizeof(struct task_struct);
-            printf("task_struct size: %lu\n\n", size);
-            size_t offset;
-            offset = offsetof(struct task_struct, state);
-            printf("state: %zu\n", offset);
-            offset = offsetof(struct task_struct, pid);
-            printf("pid: %zu\n", offset);
-            offset = offsetof(struct task_struct, children);
-            printf("children: %zu\n", offset);
-            offset = offsetof(struct task_struct, sibling);
-            printf("sibling: %zu\n", offset);
-            offset = offsetof(struct task_struct, comm);
-            printf("comm: %zu\n", offset);
-            offset = offsetof(struct task_struct, real_parent);
-            printf("real_parent: %zu\n", offset);
-            return 0;
-        }
+int main()
+{
+    size_t size = sizeof(struct task_struct);
+    printf("task_struct size: %lu\n\n", size);
+    size_t offset;
+    offset = offsetof(struct task_struct, state);
+    printf("state: %zu\n", offset);
+    offset = offsetof(struct task_struct, pid);
+    printf("pid: %zu\n", offset);
+    offset = offsetof(struct task_struct, children);
+    printf("children: %zu\n", offset);
+    offset = offsetof(struct task_struct, sibling);
+    printf("sibling: %zu\n", offset);
+    offset = offsetof(struct task_struct, comm);
+    printf("comm: %zu\n", offset);
+    offset = offsetof(struct task_struct, real_parent);
+    printf("real_parent: %zu\n", offset);
+    return 0;
+}
     \end{verbatim}
 \end{itembox}
 
@@ -382,15 +380,15 @@ print_offset.cの実行結果は以下の通りである．
 
 \begin{itembox}[l]{./print_offset}
     \begin{verbatim}
-        $ ./print_offset
-        # task_struct size: 9088
+$ ./print_offset
+# task_struct size: 9088
 
-        # state: 16
-        # pid: 2216
-        # children: 2248
-        # sibling: 2264
-        # comm: 2640
-        # real_parent: 2232
+# state: 16
+# pid: 2216
+# children: 2248
+# sibling: 2264
+# comm: 2640
+# real_parent: 2232
     \end{verbatim}
 \end{itembox}
 
@@ -406,19 +404,19 @@ init_taskの開始アドレスは，監視対象ホストの，/proc/kallsymsに
 
 \ref{section:mem_dump}では，ネットワーク越しに，監視対象ホストのメモリダンプを取得する工程について記述した．
 このメモリダンプからプロセスID 0をもつinit_taskを探す．
-init_taskはtask_struct構造体であるため，メモリダンプの中から，init_taskに特有の文字列をなどを探し，それを目印としてinit_taskの先頭アドレスを算出する．
+init_taskはtask\_struct構造体であるため，メモリダンプの中から，init_taskに特有の文字列をなどを探し，それを目印としてinit_taskの先頭アドレスを算出する．
 
-本研究においては，task_struct構造体の，commフィールドの値に着目した．
+本研究においては，task\_struct構造体の，commフィールドの値に着目した．
 commフィールドには，プロセスに関する情報のうち，実行可能ファイルの名前が16Byteで記載されている．
 init_taskにおけるcommフィールドの値は，swapper/0であるため，この値をメモリダンプから，以下のスクリプトを用いて検索を行う．
 
 \begin{itembox}[l]{find swapper/0}
     \begin{verbatim}
-        xxd dump | grep swapper/0
+xxd dump | grep swapper/0
     \end{verbatim}
 \end{itembox}
 
-この値から，\ref{section:define_task_struct}にて求めた，commフィールドの値を引き，
+この値から，\ref{section:define_task\_struct}にて求めた，commフィールドの値を引き，
 そこからさらに，ブートローダの使用領域である128KBを足すことで，init_taskの先頭アドレスを算出する．
 
 % 131072 = 128KB!!
@@ -445,17 +443,17 @@ Linuxカーネル4.15.0においては，変換に用いる関数およびその
 CONFIG_DEBUG_VIRTUALという設定や，64bitかどうかを示す値であり，この値はソースコードからマクロを辿っていくことで知ることが可能である．
 本研究では，\ref{section:restore_kconfig}にて述べたように，復元したマクロの値を参照しつつ，この関数の実体を確定させる．
 
-二点目として，監視対象ホストの上におけるtask_struct構造体におけるオフセットの値である．
+二点目として，監視対象ホストの上におけるtask\_struct構造体におけるオフセットの値である．
 この値に関しては，\ref{section:define_task_struct}で求めたため，その値を以下の6行に記載する．
 
 \begin{itembox}[l]{macros}
     \begin{verbatim}
-        #define OFFSET_HEAD_STATE 16
-        #define OFFSET_HEAD_PID 2216
-        #define OFFSET_HEAD_CHILDREN 2248
-        #define OFFSET_HEAD_SIBLING 2264
-        #define OFFSET_HEAD_COMM 2640
-        #define OFFSET_HEAD_REAL_PARENT 2232
+#define OFFSET_HEAD_STATE 16
+#define OFFSET_HEAD_PID 2216
+#define OFFSET_HEAD_CHILDREN 2248
+#define OFFSET_HEAD_SIBLING 2264
+#define OFFSET_HEAD_COMM 2640
+#define OFFSET_HEAD_REAL_PARENT 2232
     \end{verbatim}
 \end{itembox}
 

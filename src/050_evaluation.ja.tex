@@ -1,31 +1,179 @@
 \chapter{評価}
 \label{chap:evaluation}
 
+本章では，本研究における実装によって，正しく監視対象ホストの状態を取得できているかどうかを評価とする．
+また，hoge，fugaな時にもその評価が正しくできているかを確認する．
+
 \section{評価手法}
 
-カーネルのバージョンのみわかる状態から，正しくps auxと同じような出力を得られるかどうか，
-また，\verb|task_struct|構造体の構成に関わるようなカーネルコンフィグを変更し，変更後でも差異を吸収して上記の結果を得られるかどうか
+評価手法として，カーネルのバージョンのみわかる状態から，正しくps auxと同じような出力を得られるかどうか，
+実験用に起動したプロセスを，本研究の実装上から確認できるかどうかを評価とする．
 
 プロセスとして監視を行う手法と，本研究の実装を，通常稼働中とカーネルパニック発生時における実行の可否について述べる．
 
-\section{評価}
+\section{実験環境}
 
-\subsection{カーネルコンフィグ変更時の動作確認}
+本研究では，以下の環境で実験を行う．
 
-コンフィグいじってビルドし直したものに対しても問題なく解析を行えるかどうか．
+\begin{table}[htbp]
+    % \label{tab:}
+    \caption{実装を実行するホスト}
+    \begin{center}
+      \begin{tabular}{ll}
+      \hline
+      \verb|Linuxカーネルのバージョン| Linux 4.19.0-6-amd64 \\
+      \hline
+      \verb|ディストリビューション| Debian buster 10.2 \\
+      \hline
+      \end{tabular}
+    \end{center}
+  \end{table}
 
-\subsection{通常稼働中における評価}
+  \begin{table}[htbp]
+    % \label{tab:}
+    \caption{監視対象ホスト}
+    \begin{center}
+      \begin{tabular}{ll}
+      \hline
+      \verb|Linuxカーネルのバージョン| Linux 4.15.0-74-generic \\
+      \hline
+      \verb|ディストリビューション| Ubuntu 18.04.3 LTS (Bionic Beaver) \\
+      \hline
+      \end{tabular}
+    \end{center}
+  \end{table}
+
+\section{評価手順}
+
+評価手順として，\ref{chap:implementation}章で述べた実装を用いて，実際に全ての工程を，手順に沿って実行していく．
+
+\subsection{前提}
+
+前述したように，本研究の実験においては，実装を実行するホストは，監視対象ホストに関して，Linuxカーネルのバージョンのみを情報として保持する．
+
+\subsection{メモリダンプの取得}
+\label{subsection:eval_dump_mem}
+
+\ref{section:mem_dump}で述べた実装である，dump_memを用いて，メモリダンプを取得する．
+
+\begin{itembox}[l]{実行方法}
+    \begin{verbatim}
+./dump_mem > dump
+    \end{verbatim}
+\end{itembox}
+
+このファイルを実行すると，搭載している物理メモリの大きさに等しい，8GBのファイルが作成される．
+
+\begin{itembox}[l]{./dump_mem}
+    \begin{verbatim}
+$ ./dump_mem > dump
+$ ls -alh
+# total 8.0G
+# drwxr-xr-x  2 tatsunori tatsunori 4.0K Jan 26 23:01 .
+# drwxr-xr-x 17 tatsunori tatsunori 4.0K Jan 26 19:42 ..
+# -rw-r--r--  1 tatsunori tatsunori 8.0G Jan 26 19:54 dump
+    \end{verbatim}
+\end{itembox}
+
+このファイルを以後，メモリダンプと呼ぶ．
+
+\subsection{カーネルコンフィグを復元する}
+\label{subsection:eval_restore_kconfig}
+
+取得してきたメモリダンプに対して，\ref{section:restore_kconfig}で述べたように，処理を施し，ビルド時のカーネルコンフィグを復元する．
+
+\begin{itembox}[l]{strings}
+    \begin{verbatim}
+strings dump | grep CONFIG > str_list
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{exec restore_kconfig.py}
+    \begin{verbatim}
+python restore_kconfig.py str_list > restored_kconfig
+    \end{verbatim}
+\end{itembox}
+
+ここで生成されたresotred_kconfigを，実装を実行するホストでカーネルをビルドする際に，.configとしてそのまま用いる．
+
+\subsection{復元したカーネルをプリプロセッサに通す}
+
+\ref{section:preprocess}で述べたように，\ref{subsection:eval_restore_kconfig}の結果得られたカーネルコンフィグを用いて，
+カーネルのビルドを実装を実行するホストで行う．
+
+\begin{itembox}[l]{build Linux kernel}
+    \begin{verbatim}
+cd /path/to/linux-source-4.15.0
+cp /path/to/restored_kconfig .config
+    \end{verbatim}
+\end{itembox}
+
+その際に，\ref{section:preprocess}で述べたように，プリプロセッサによる処理である中間ファイルを残す設定とするため，
+Makefileに変更を加える．本研究では，監視対象ホストのバージョンは，Linux 4.15.0-74-genericでありその変更は，\ref{section:preprocess}で述べたものと同じである．
+
+変更したのちに，以下のコマンドを実行し，ビルドを開始する．
+
+\begin{itembox}[l]{ビルド}
+    \begin{verbatim}
+make -j10
+    \end{verbatim}
+\end{itembox}
+
+ビルドが終了すると，ソースコードが中間ファイルの生成によって以下のようなサイズとなる．
+
+\begin{itembox}[l]{ビルド}
+    \begin{verbatim}
+$ du -shc linux-source-4.15.0
+64G	linux-source-4.15.0
+64G	total
+    \end{verbatim}
+\end{itembox}
+
+\subsection{実行環境におけるinit_taskの先頭アドレス}
+\label{subsection:eval_init_task_head}
+
+\ref{section:define_task_struct}で述べた内容に基づいて，作成したprint_offsetを実行した結果は以下となった．
+
+\begin{itembox}[l]{名前考える}
+    \begin{verbatim}
+$ ./print_offset_restore
+# task_struct size: 9088
+
+# state: 16
+# pid: 2216
+# children: 2248
+# sibling: 2264
+# comm: 2640
+# real_parent: 2232
+    \end{verbatim}
+\end{itembox}
+
+この結果をもとに，\ref{subsection:eval_init_task_head}にて，init_taskの先頭アドレスを算出する．
+
+\ref{subsection:eval_dump_mem}で取得したメモリダンプから，\ref{subsection:find_init_task}で述べたように，swapper/0という文字列を以下のコマンドで検索を行う．
+
+\begin{itembox}[l]{find swapper/0}
+    \begin{verbatim}
+$ xxd dump | grep swapper/0
+#
+#
+    \end{verbatim}
+\end{itembox}
+
+\subsection{サブセクション}
+
+\section{通常稼働中における評価}
 
 通常時において，正しい出力を得られていることを示す．
 
-\subsection{カーネルパニック発生時における評価}
+\section{カーネルパニック発生時における評価}
 
 カーネルパニック発生時は既存の手法，プロセスとして起動する方法はだめだが，本研究における実装では問題なく動作することを示す．
 
-\subsection{時間}
+\section{時間}
 
 初期段階で時間はかかるが，それは問題ではない．大事なのは，どんなカーネルコンフィグを持つLinuxでも，解析が可能になるという点．
 
-\section{評価}
+\section{評価のまとめ}
 
 未評価
