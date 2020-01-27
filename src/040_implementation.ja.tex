@@ -35,7 +35,8 @@ libtlpでは，RDMAを用いてメモリダンプを取得するためのイン�
 
 本研究では，\verb|dma_read|関数のみを用いる．
 
-\subsection{process-list.c}
+\subsection{NetTLPにおけるprocess-list.c}
+\label{subsection:upa_process-list}
 
 このファイルでやっていることをかく．
 本研究の実装が，このprocess-list.cを拡張したものであるということを書く．
@@ -108,7 +109,7 @@ KASLRでは，この考え方をカーネルの起動時にも適用するよう
 
 % todo: ここに説明を加筆
 
-KASLRは，本研究においては，有効にしてもいい．ちょっと待て．
+% KASLRは，本研究においては，有効にしてもいい．ちょっと待て．
 
 \section{実装の全体}
 
@@ -177,7 +178,86 @@ Linuxカーネル4.15.0におけるカーネルコンフィグの一覧は，下
 
 \begin{itembox}[l]{search config script}
     \begin{verbatim}
-        実装した
+        import sys
+
+        configs = [
+            "CONFIG_64BIT", "CONFIG_X86_64", "CONFIG_X86",
+            "CONFIG_INSTRUCTION_DECODER", "CONFIG_OUTPUT_FORMAT",
+            "CONFIG_ARCH_DEFCONFIG", "CONFIG_LOCKDEP_SUPPORT",
+            # 省略
+            "CONFIG_ARCH_HAS_PMEM_API", "CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE",
+            "CONFIG_SBITMAP", "CONFIG_PARMAN", "CONFIG_STRING_SELFTEST"
+        ]
+
+        # 有効な文字列が見つかった場合は1を返す
+        def classification(l, s):
+
+            if "#if" in l or "#endif" in l:
+                # sys.stderr.write("No!! -> Macro, "+l)
+                return 0
+
+            if l[:3] != "CON" and l[:3] != "# C":
+                # sys.stderr.write("No!! -> NOT CONFIG, "+l)
+                return 0
+
+            if s + "=y" in l:
+                print(s + "=y")
+                return 1
+            elif s + "=m" in l:
+                print(s + "=m")
+                return 1
+            elif s + " is not set" in l:
+                print("# " + s + " is not set")
+                return 1
+            elif s + '=' in l:
+                print(l)
+                return 1
+            else:
+                # sys.stderr.write("No!! -> No match, "+l)
+                return 0
+
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{search config script2}
+    \begin{verbatim}
+        def search_config_str(file_name, s):
+            ld = open(file_name)
+            lines = ld.readlines()
+            ld.close()
+
+            for line in lines:
+                if line.find(s) >= 0:
+                    if classification(line[:-1], s):
+                        return 1
+            return 0
+
+
+        def search(file_name):
+            for s in configs:
+                # print("Searching "+s+" .....")
+                if not search_config_str(file_name, s):
+                    # print("# Cannot find " + s)
+                    sys.stderr.write("# Cannot find " + s)
+
+
+        def usage():
+            print("usage: python find_kconfig.py path/to/str_list")
+
+
+        def main():
+            args = sys.argv
+            if len(args) < 2:
+                usage()
+                return 0
+
+            file_name = args[1]
+            search(file_name)
+
+
+        if __name__ == "__main__":
+            main()
+
     \end{verbatim}
 \end{itembox}
 
@@ -210,8 +290,6 @@ Linuxカーネルにおいては，ビルド時にMakefileを使用するため�
 
 \begin{itembox}[l]{-save-tempsオプションの設定・変更前}
     \begin{verbatim}
-        LINUXINCLUDE   += -Iubuntu/include $(if $(KBUILD_SRC),-I$(srctree)/ubuntu/include)
-
         KBUILD_AFLAGS   := -D__ASSEMBLY__
         KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -fno-strict-aliasing -fno-common -fshort-wchar \
@@ -229,8 +307,6 @@ Linuxカーネルにおいては，ビルド時にMakefileを使用するため�
 
 \begin{itembox}[l]{-save-tempsオプションの設定・変更後}
     \begin{verbatim}
-        LINUXINCLUDE   += -Iubuntu/include $(if $(KBUILD_SRC),-I$(srctree)/ubuntu/include)
-
         KBUILD_AFLAGS   := -D__ASSEMBLY__
         KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                 -fno-strict-aliasing -fno-common -fshort-wchar \
@@ -258,6 +334,7 @@ Linuxカーネルにおいては，ビルド時にMakefileを使用するため�
 \end{itembox}
 
 \section{task_struct構造体の確定}
+\label{section:define_task_struct}
 
 本セクションでは，\ref{section:preprocess}で述べた工程を経た結果生成された中間ファイルから，task_struct構造体を導出し，プロセス情報一覧の表示に必要なフィールドのオフセットを求める．
 
@@ -322,25 +399,70 @@ print_offset.cの実行結果は以下の通りである．
 \subsection{init_taskの開始アドレスの算出}
 \label{subsection:find_init_task}
 
-ここに実装を書く．
+本セクションでは，プロセスIDとして0を持つプロセスである，init_taskの先頭アドレスを算出する．
 
-\subsection{init\_taskに関する情報の復元}
+init_taskの開始アドレスは，監視対象ホストの，/proc/kallsymsに記述されているが，その開始アドレスは本研究の実験環境においては，
+実装を実行するホストは情報として持っていない．そのため，後述する手法を用いてその開始アドレスを算出する．
 
-\ref{section:mem_dump}で作成した\verb|str_list|に対して，\verb|init_task|に関する行をgrepコマンドを用いて探す．
+\ref{section:mem_dump}では，ネットワーク越しに，監視対象ホストのメモリダンプを取得する工程について記述した．
+このメモリダンプからプロセスID 0をもつinit_taskを探す．
+init_taskはtask_struct構造体であるため，メモリダンプの中から，init_taskに特有の文字列をなどを探し，それを目印としてinit_taskの先頭アドレスを算出する．
 
-\begin{itembox}[l]{init_taskを探す}
+本研究においては，task_struct構造体の，commフィールドの値に着目した．
+commフィールドには，プロセスに関する情報のうち，実行可能ファイルの名前が16Byteで記載されている．
+init_taskにおけるcommフィールドの値は，swapper/0であるため，この値をメモリダンプから，以下のスクリプトを用いて検索を行う．
+
+\begin{itembox}[l]{find swapper/0}
     \begin{verbatim}
-        cat str_list | grep "D init_task"
-        # ffffffff82413480 D init_task
+        xxd dump | grep swapper/0
     \end{verbatim}
 \end{itembox}
 
-\section{得られた構造体を元に，実行ファイルを生成}
+この値から，\ref{section:define_task_struct}にて求めた，commフィールドの値を引き，
+そこからさらに，ブートローダの使用領域である128KBを足すことで，init_taskの先頭アドレスを算出する．
 
-ていうか実装をカーネルに埋め込めばいいのでは
+% 131072 = 128KB!!
+% 128KBはBIOSの領域？
+% (xxd dump | grep swapper/0のアドレス) - commのoffset + 128KBがinit_taskの先頭アドレス．
 
-\ref{section:preprocess}で得ることができたソースをもとに，process-listを改造したものに関する説明をここに書く
+% KASLRを自然と回避することになる．多分
+
+\section{プロセス一覧の表示}
+
+\ref{section:preprocess}で得ることができたソースをもとに，process-listを改造したものに関する説明をここに書く（もう動いてはいるので，整理して書く．）
+
+以上の実装により得られた値を用いて，\ref{subsection:upa_process}で述べたprocess-list.cのうち，
+監視対象ホストの環境に依存した部分を書き換えることで，プロセスの一覧を取得する．
+
+\subsection{環境に依存するパラメータ}
+
+本セクションでは，プロセスの一覧を得る上で，マシンごとに異なる設定を述べる．
+
+一点目として，カーネル空間に仮想アドレスにおける仮想アドレスから物理アドレスへ変換する際に使用する関数の実体が異なる．
+/proc/kallsymsに書いてある値をはじめとして，子プロセスの開始アドレスを格納しているフィールドには，カーネル空間における仮想アドレスが格納されているが，
+本研究においてメモリアドレスを指定する際には，物理アドレスを指定する必要がある．
+Linuxカーネル4.15.0においては，変換に用いる関数およびその中で使用されているシンボルは，
+CONFIG_DEBUG_VIRTUALという設定や，64bitかどうかを示す値であり，この値はソースコードからマクロを辿っていくことで知ることが可能である．
+本研究では，\ref{section:restore_kconfig}にて述べたように，復元したマクロの値を参照しつつ，この関数の実体を確定させる．
+
+二点目として，監視対象ホストの上におけるtask_struct構造体におけるオフセットの値である．
+この値に関しては，\ref{section:define_task_struct}で求めたため，その値を以下の6行に記載する．
+
+\begin{itembox}[l]{macros}
+    \begin{verbatim}
+        #define OFFSET_HEAD_STATE 16
+        #define OFFSET_HEAD_PID 2216
+        #define OFFSET_HEAD_CHILDREN 2248
+        #define OFFSET_HEAD_SIBLING 2264
+        #define OFFSET_HEAD_COMM 2640
+        #define OFFSET_HEAD_REAL_PARENT 2232
+    \end{verbatim}
+\end{itembox}
 
 \section{実装のまとめ}
 
-この章は，相当長くなるので，まとめを書く．
+% この章は，相当長くなるので，まとめを書く．
+
+本章では，監視対象ホストに関する情報として，動作しているLinuxカーネルのバージョンのみを実装を実行するホストに与えた．
+その上で，RDMAのNetTLP実装を用いてメモリダンプを取得し解析を行うことで，
+カーネルコンフィグをはじめとした，プロセス一覧の取得に必要な情報を収集するための実装について述べた．
