@@ -155,12 +155,46 @@ $ ./print_offset_restore
 \begin{itembox}[l]{find swapper/0}
     \begin{verbatim}
 $ xxd dump | grep swapper/0
-#
-#
+# 023f3ed0: 7377 6170 7065 722f 3000 0000 0000 0000  swapper/0.......
+# e09f3ed0: 7377 6170 7065 722f 3000 0000 0000 0000  swapper/0.......
     \end{verbatim}
 \end{itembox}
 
-\subsection{サブセクション}
+以上の結果となった．このうち一つ目の値を取り出すと，023f3ed0であるが，\ref{subsection:find_init_task}に倣って，
+0x023f3ed0の10進表記である37699280から，commフィールドのオフセットである2640を減算し，128KBのバイト数である131072を加算する．
+その結果，得られた値は，37699280-2640+131072=37827712 となる．
+この値は物理アドレスであるため，これをカーネルの仮想アドレスに変換する．
+
+\begin{itembox}[l]{__phys_addr_nodebug()}
+    \begin{verbatim}
+#define __START_KERNEL_map _AC(0xffffffff80000000, UL)
+#define phys_base 0x0 /* x86 */
+
+static inline unsigned long __phys_addr_nodebug(unsigned long x)
+{
+    // unsigned long before = x;
+    unsigned long y = x - __START_KERNEL_map;
+
+    /* use the carry flag to determine if x was < __START_KERNEL_map */
+    x = y + ((x > y) ? phys_base : (__START_KERNEL_map - PAGE_OFFSET));
+
+    // printf("0x%lx -> 0x%lx(%luGB)\n", before, x, gb_from_lx(x));
+
+    return x;
+}
+    \end{verbatim}
+\end{itembox}
+
+Linuxカーネルで物理アドレスが0からのストレートマップとなるのは，上述のソースコード内における三項演算子のうち，条件式が真となる場合である．
+この関数から，37827712の16進数表記である0x2413480という結果が帰る場合は条件式が真となる場合であるため，カーネル空間の仮想アドレスにおいて，
+37827712という物理アドレスに対応する仮想アドレスは， 0x2413480 + phys_base + 0xffffffff80000000 の結果である 0xffffffff82413480 となる．
+この値をprocess-list.cの引数として使用する．
+
+\subsection{process-list.cの実行}
+
+\label{subsection:eval_init_task_head}
+
+./process-list 0xFFFFFFFF82413480
 
 \section{通常稼働中における評価}
 
