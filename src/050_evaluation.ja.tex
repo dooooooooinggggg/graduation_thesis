@@ -8,6 +8,7 @@
 
 評価手法として，カーネルのバージョンのみわかる状態から，正しくps auxと同じような出力を得られるかどうか，
 実験用に起動したプロセスを，本研究の実装上から確認できるかどうかを評価とする．
+また，実験の最中に導出した値が実際のホストにおいて正しいかどうかを確認し，それを評価とする．
 
 プロセスとして監視を行う手法と，本研究の実装を，通常稼働中とカーネルパニック発生時における実行の可否について述べる．
 
@@ -44,6 +45,7 @@
   \end{table}
 
 \section{評価手順}
+\label{section:eval}
 
 評価手順として，\ref{chap:implementation}章で述べた実装を用いて，実際に全ての工程を，手順に沿って実行していく．
 
@@ -187,26 +189,318 @@ static inline unsigned long __phys_addr_nodebug(unsigned long x)
 
 Linuxカーネルで物理アドレスが0からのストレートマップとなるのは，上述のソースコード内における三項演算子のうち，条件式が真となる場合である．
 この関数から，37827712の16進数表記である0x2413480という結果が帰る場合は条件式が真となる場合であるため，カーネル空間の仮想アドレスにおいて，
-37827712という物理アドレスに対応する仮想アドレスは， 0x2413480 + phys_base + 0xffffffff80000000 の結果である 0xffffffff82413480 となる．
-この値をprocess-list.cの引数として使用する．
+37827712という物理アドレスに対応する仮想アドレスは， 0x2413480 + phys\_base + 0xffffffff80000000 の結果である 0xffffffff82413480 となり，
+これが本研究における監視対象ホストのinit_taskの仮想アドレスと推定する．
+また，この値をprocess-list.cの引数として使用する．
 
 \subsection{process-list.cの実行}
 
-\label{subsection:eval_init_task_head}
+\ref{subsection:eval_init_task_head}で導いた値を引数として，以下のようにコマンドを実行する．
+実行結果については，\ref{subsection:exec_process_list}で述べる．
 
+\begin{itembox}[l]{process-list.cの実行}
+    \begin{verbatim}
 ./process-list 0xFFFFFFFF82413480
+    \end{verbatim}
+\end{itembox}
 
-\section{通常稼働中における評価}
+\section{評価}
 
-通常時において，正しい出力を得られていることを示す．
+\subsection{値が正しいこと}
 
-\section{カーネルパニック発生時における評価}
+\ref{section:eval}における評価手順において，導出した値として，init_taskの仮想アドレスが正しいかどうかを評価する．
+評価手法としては，実験の際に導いた0xffffffff82413480という値が監視対象ホストの値と等しいかどうかを，監視対象ホストのkallsymsを参照することで比較する．
+
+比較結果は以下であり，導出した0xffffffff82413480という値が正しい値であることを示した．
+
+\begin{itembox}[l]{kallsymsの出力}
+    \begin{verbatim}
+$ sudo cat kallsyms | grep "D init_task"
+# ffffffff82413480 D init_task
+    \end{verbatim}
+\end{itembox}
+
+\subsection{通常稼働中における評価}
+\label{subsection:exec_process_list}
+
+\ref{section:eval}によって求めた値を用いて，process-list.cを実行する．
+実行結果は以下である．
+
+\begin{itembox}[l]{process-listの出力}
+    \begin{verbatim}
+$ ./process-list 0xFFFFFFFF82413480
+
+init_vm_addr: 0xffffffff82413480
+PhyAddr             PID STAT COMMAND
+0x00000002413480      0 R: swapper/0
+0x000002361f0000      1 S: systemd
+0x0000022ea616c0    287 S: systemd-journal
+0x0000022da0ad80    297 S: blkmapd
+0x0000022e232d80    308 S: systemd-udevd
+0x000002333c8000    527 S: systemd-timesyn
+0x000002333cc440    530 S: rpcbind
+0x00000233d72d80    534 S: cron
+0x00000233d70000    536 S: atd
+0x0000022e732d80    545 S: rsyslogd
+0x0000022dbfad80    556 S: irqbalance
+0x0000022dbf96c0    561 S: accounts-daemon
+0x0000022dbfdb00    569 S: dbus-daemon
+0x0000022f752d80    586 S: wpa_supplicant
+0x0000022f754440    589 S: systemd-logind
+0x0000022ea40000    592 S: networkd-dispat
+0x0000022f7e0000    607 S: polkitd
+0x0000022f750000    634 S: systemd-resolve
+0x0000022da08000    663 S: dhclient
+0x00000235378000    777 S: nmbd
+0x00000234bac440    781 S: unattended-upgr
+0x00000234baad80    783 S: sshd
+0x00000234ba2d80   3009 S: sshd
+0x0000022e735b00   3142 S: sshd
+0x00000234ba16c0   3143 S: zsh
+0x00000234ba8000    787 S: agetty
+0x00000234ba0000    819 S: smbd
+0x00000234452d80    821 S: smbd-notifyd
+0x000002344516c0    822 S: cleanupd
+0x00000234450000    823 S: lpqd
+0x0000022f7e4440   3032 S: systemd
+0x0000022f7516c0   3033 S: (sd-pam)
+0x000002361f5b00      2 S: kthreadd
+0x000002361f16c0      4 D: kworker/0:0H
+0x0000023622ad80      6 D: mm_percpu_wq
+0x000002362296c0      7 S: ksoftirqd/0
+0x0000023622c440      8 D: rcu_sched
+0x00000236228000      9 D: rcu_bh
+0x0000023622db00     10 S: migration/0
+0x00000236254440     11 S: watchdog/0
+0x000002362516c0     12 S: cpuhp/0
+0x0000023625c440     13 S: cpuhp/1
+0x00000236258000     14 S: watchdog/1
+0x0000023625db00     15 S: migration/1
+0x0000023625ad80     16 S: ksoftirqd/1
+0x0000023630db00     18 D: kworker/1:0H
+0x0000023630ad80     19 S: cpuhp/2
+0x000002363096c0     20 S: watchdog/2
+0x0000023630c440     21 S: migration/2
+0x00000236308000     22 S: ksoftirqd/2
+0x00000236372d80     24 D: kworker/2:0H
+0x000002363716c0     25 S: cpuhp/3
+0x00000236374440     26 S: watchdog/3
+0x00000236370000     27 S: migration/3
+0x000002363dad80     28 S: ksoftirqd/3
+0x000002363dc440     30 D: kworker/3:0H
+0x00000235c54440     31 S: kdevtmpfs
+0x00000235c9ad80     32 D: netns
+0x00000235c996c0     33 S: rcu_tasks_kthre
+0x00000235c9c440     34 S: kauditd
+0x00000235c98000     35 D: kworker/0:1
+0x00000235d596c0     37 S: khungtaskd
+0x00000235d5c440     38 S: oom_reaper
+0x00000235d6ad80     39 D: writeback
+0x00000235d696c0     40 S: kcompactd0
+0x00000235d6c440     41 S: ksmd
+0x00000235d68000     42 S: khugepaged
+0x000002363d8000     43 D: crypto
+0x000002363ddb00     44 D: kintegrityd
+0x00000235d7db00     45 D: kblockd
+0x00000235d7ad80     46 D: kworker/2:1
+0x00000235d796c0     47 D: kworker/3:1
+0x00000235d7c440     48 D: ata_sff
+0x00000235d78000     49 D: md
+0x00000235eb0000     50 D: edac-poller
+0x00000235eb5b00     51 D: devfreq_wq
+0x00000235eb2d80     52 D: watchdogd
+0x00000235c52d80     55 S: kswapd0
+0x00000235c516c0     56 D: kworker/u9:0
+0x0000022ea05b00     57 S: ecryptfs-kthrea
+0x00000235eb16c0     99 D: kthrotld
+0x00000235eb4440    100 D: acpi_thermal_pm
+0x0000022ea3db00    105 D: kworker/1:2
+0x0000022ea72d80    109 D: ipv6_addrconf
+0x0000022ea696c0    118 D: kstrp
+0x0000022ea6db00    135 D: charger_manager
+0x0000022ea016c0    181 S: scsi_eh_0
+0x0000022ea04440    182 D: scsi_tmf_0
+0x0000022ea02d80    183 S: scsi_eh_1
+0x0000022ea38000    184 D: scsi_tmf_1
+0x0000022e2316c0    185 S: scsi_eh_2
+0x0000022e234440    186 D: scsi_tmf_2
+0x0000022e230000    187 S: scsi_eh_3
+0x0000022ea45b00    188 D: scsi_tmf_3
+0x0000022ea316c0    189 S: scsi_eh_4
+0x0000022ea3ad80    190 D: scsi_tmf_4
+0x0000022ea396c0    191 S: scsi_eh_5
+0x0000022ea3c440    192 D: scsi_tmf_5
+0x0000022ea34440    198 D: e1000e
+0x0000022ea516c0    199 D: e1000e
+0x0000022ea52d80    201 D: kworker/1:1H
+0x0000022da0db00    230 D: kworker/3:1H
+0x0000022ea6ad80    232 S: jbd2/sda1-8
+0x00000235d5ad80    233 D: ext4-rsv-conver
+0x00000235d58000    243 D: kworker/0:1H
+0x0000022ea716c0    260 D: kworker/2:1H
+0x0000022e734440    266 D: rpciod
+0x0000022e7316c0    267 D: xprtiod
+0x0000022ea6c440    366 D: ttm_swap
+0x0000022f91db00   1920 D: kworker/1:0
+0x00000233d75b00   2843 D: kworker/0:0
+0x0000022ea65b00   2844 D: kworker/3:0
+0x0000022f7e5b00   3520 D: kworker/u8:1
+0x00000234455b00   3555 D: kworker/2:0
+0x00000234ba5b00   3592 D: kworker/u8:2
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{監視対象ホストにおけるpsコマンドの結果}
+    \begin{verbatim}
+$ ps aux
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.1 225484  9196 ?        Ss   Jan27   0:14 /sbin/init nopti nospectre_v2 nokaslr
+root         2  0.0  0.0      0     0 ?        S    Jan27   0:00 [kthreadd]
+root         4  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/0:0H]
+root         6  0.0  0.0      0     0 ?        I<   Jan27   0:00 [mm_percpu_wq]
+root         7  0.0  0.0      0     0 ?        S    Jan27   0:00 [ksoftirqd/0]
+root         8  0.0  0.0      0     0 ?        I    Jan27   0:02 [rcu_sched]
+root         9  0.0  0.0      0     0 ?        I    Jan27   0:00 [rcu_bh]
+root        10  0.0  0.0      0     0 ?        S    Jan27   0:00 [migration/0]
+root        11  0.0  0.0      0     0 ?        S    Jan27   0:00 [watchdog/0]
+root        12  0.0  0.0      0     0 ?        S    Jan27   0:00 [cpuhp/0]
+root        13  0.0  0.0      0     0 ?        S    Jan27   0:00 [cpuhp/1]
+root        14  0.0  0.0      0     0 ?        S    Jan27   0:00 [watchdog/1]
+root        15  0.0  0.0      0     0 ?        S    Jan27   0:00 [migration/1]
+root        16  0.0  0.0      0     0 ?        S    Jan27   0:00 [ksoftirqd/1]
+root        18  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/1:0H]
+root        19  0.0  0.0      0     0 ?        S    Jan27   0:00 [cpuhp/2]
+root        20  0.0  0.0      0     0 ?        S    Jan27   0:00 [watchdog/2]
+root        21  0.0  0.0      0     0 ?        S    Jan27   0:00 [migration/2]
+root        22  0.0  0.0      0     0 ?        S    Jan27   0:00 [ksoftirqd/2]
+root        24  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/2:0H]
+root        25  0.0  0.0      0     0 ?        S    Jan27   0:00 [cpuhp/3]
+root        26  0.0  0.0      0     0 ?        S    Jan27   0:00 [watchdog/3]
+root        27  0.0  0.0      0     0 ?        S    Jan27   0:00 [migration/3]
+root        28  0.0  0.0      0     0 ?        S    Jan27   0:00 [ksoftirqd/3]
+root        30  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/3:0H]
+root        31  0.0  0.0      0     0 ?        S    Jan27   0:00 [kdevtmpfs]
+root        32  0.0  0.0      0     0 ?        I<   Jan27   0:00 [netns]
+root        33  0.0  0.0      0     0 ?        S    Jan27   0:00 [rcu_tasks_kthre]
+root        34  0.0  0.0      0     0 ?        S    Jan27   0:00 [kauditd]
+root        35  0.0  0.0      0     0 ?        I    Jan27   0:00 [kworker/0:1]
+root        37  0.0  0.0      0     0 ?        S    Jan27   0:00 [khungtaskd]
+root        38  0.0  0.0      0     0 ?        S    Jan27   0:00 [oom_reaper]
+root        39  0.0  0.0      0     0 ?        I<   Jan27   0:00 [writeback]
+root        40  0.0  0.0      0     0 ?        S    Jan27   0:00 [kcompactd0]
+root        41  0.0  0.0      0     0 ?        SN   Jan27   0:00 [ksmd]
+root        42  0.0  0.0      0     0 ?        SN   Jan27   0:00 [khugepaged]
+root        43  0.0  0.0      0     0 ?        I<   Jan27   0:00 [crypto]
+root        44  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kintegrityd]
+root        45  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kblockd]
+root        46  0.3  0.0      0     0 ?        I    Jan27   2:13 [kworker/2:1]
+root        47  0.0  0.0      0     0 ?        I    Jan27   0:00 [kworker/3:1]
+root        48  0.0  0.0      0     0 ?        I<   Jan27   0:00 [ata_sff]
+root        49  0.0  0.0      0     0 ?        I<   Jan27   0:00 [md]
+root        50  0.0  0.0      0     0 ?        I<   Jan27   0:00 [edac-poller]
+root        51  0.0  0.0      0     0 ?        I<   Jan27   0:00 [devfreq_wq]
+root        52  0.0  0.0      0     0 ?        I<   Jan27   0:00 [watchdogd]
+root        55  0.0  0.0      0     0 ?        S    Jan27   0:00 [kswapd0]
+root        56  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/u9:0]
+root        57  0.0  0.0      0     0 ?        S    Jan27   0:00 [ecryptfs-kthrea]
+root        99  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kthrotld]
+root       100  0.0  0.0      0     0 ?        I<   Jan27   0:00 [acpi_thermal_pm]
+root       105  0.0  0.0      0     0 ?        I    Jan27   0:00 [kworker/1:2]
+root       109  0.0  0.0      0     0 ?        I<   Jan27   0:00 [ipv6_addrconf]
+root       118  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kstrp]
+root       135  0.0  0.0      0     0 ?        I<   Jan27   0:00 [charger_manager]
+root       181  0.0  0.0      0     0 ?        S    Jan27   0:00 [scsi_eh_0]
+root       182  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_0]
+root       183  0.0  0.0      0     0 ?        S    Jan27   0:00 [scsi_eh_1]
+root       184  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_1]
+root       185  0.0  0.0      0     0 ?        S    Jan27   0:00 [scsi_eh_2]
+root       186  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_2]
+root       187  0.0  0.0      0     0 ?        S    Jan27   0:00 [scsi_eh_3]
+root       188  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_3]
+root       189  0.0  0.0      0     0 ?        S    Jan27   0:01 [scsi_eh_4]
+root       190  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_4]
+root       191  0.0  0.0      0     0 ?        S    Jan27   0:00 [scsi_eh_5]
+root       192  0.0  0.0      0     0 ?        I<   Jan27   0:00 [scsi_tmf_5]
+root       198  0.0  0.0      0     0 ?        I<   Jan27   0:00 [e1000e]
+root       199  0.0  0.0      0     0 ?        I<   Jan27   0:00 [e1000e]
+root       201  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/1:1H]
+root       230  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/3:1H]
+root       232  0.0  0.0      0     0 ?        S    Jan27   0:00 [jbd2/sda1-8]
+root       233  0.0  0.0      0     0 ?        I<   Jan27   0:00 [ext4-rsv-conver]
+root       243  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/0:1H]
+root       260  0.0  0.0      0     0 ?        I<   Jan27   0:00 [kworker/2:1H]
+root       266  0.0  0.0      0     0 ?        I<   Jan27   0:00 [rpciod]
+root       267  0.0  0.0      0     0 ?        I<   Jan27   0:00 [xprtiod]
+root       287  0.0  0.4 127564 36564 ?        S<s  Jan27   0:00 /lib/systemd/systemd-journald
+root       297  0.0  0.0  23920   180 ?        Ss   Jan27   0:00 /usr/sbin/blkmapd
+root       308  0.0  0.0  46008  4836 ?        Ss   Jan27   0:00 /lib/systemd/systemd-udevd
+root       366  0.0  0.0      0     0 ?        I<   Jan27   0:00 [ttm_swap]
+systemd+   527  0.0  0.0 141932  3228 ?        Ssl  Jan27   0:00 /lib/systemd/systemd-timesyncd
+root       530  0.0  0.0  47604  3504 ?        Ss   Jan27   0:00 /sbin/rpcbind -f -w
+root       534  0.0  0.0  32344  3280 ?        Ss   Jan27   0:00 /usr/sbin/cron -f
+daemon     536  0.0  0.0  28332  2232 ?        Ss   Jan27   0:00 /usr/sbin/atd -f
+syslog     545  0.0  0.0 263036  4632 ?        Ssl  Jan27   0:00 /usr/sbin/rsyslogd -n
+root       556  0.0  0.0 110484  3420 ?        Ssl  Jan27   0:00 /usr/sbin/irqbalance --foreground
+root       561  0.0  0.0 288680  7136 ?        Ssl  Jan27   0:00 /usr/lib/accountsservice/accounts-daemon
+message+   569  0.0  0.0  50104  4188 ?        Ss   Jan27   0:00 /usr/bin/dbus-daemon --system --address=systemd: --nofork --nopidfile
+root       586  0.0  0.0  45232  2956 ?        Ss   Jan27   0:00 /sbin/wpa_supplicant -u -s -O /run/wpa_supplicant
+root       589  0.0  0.0  70600  6060 ?        Ss   Jan27   0:00 /lib/systemd/systemd-logind
+root       592  0.0  0.2 171560 17528 ?        Ssl  Jan27   0:00 /usr/bin/python3 /usr/bin/networkd-dispatcher --run-startup-triggers
+root       607  0.0  0.0 288884  6344 ?        Ssl  Jan27   0:00 /usr/lib/policykit-1/polkitd --no-debug
+systemd+   634  0.0  0.0  70636  5320 ?        Ss   Jan27   0:00 /lib/systemd/systemd-resolved
+root       663  0.0  0.0  25992  3592 ?        Ss   Jan27   0:00 /sbin/dhclient -1 -4 -v -pf /run/dhclient.eth1.pid -lf /var/lib/dhcp/d
+root       777  0.0  0.1 270744 12652 ?        Ss   Jan27   0:00 /usr/sbin/nmbd --foreground --no-process-group
+root       781  0.0  0.2 188264 20376 ?        Ssl  Jan27   0:00 /usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shu
+root       783  0.0  0.0  72300  5636 ?        Ss   Jan27   0:00 /usr/sbin/sshd -D
+root       787  0.0  0.0  17204  1912 tty1     Ss+  Jan27   0:00 /sbin/agetty -o -p -- \u --noclear tty1 linux
+root       819  0.0  0.2 356924 20736 ?        Ss   Jan27   0:00 /usr/sbin/smbd --foreground --no-process-group
+root       821  0.0  0.0 346060  6052 ?        S    Jan27   0:00 /usr/sbin/smbd --foreground --no-process-group
+root       822  0.0  0.0 346052  4660 ?        S    Jan27   0:00 /usr/sbin/smbd --foreground --no-process-group
+root       823  0.0  0.0 356924  7144 ?        S    Jan27   0:00 /usr/sbin/smbd --foreground --no-process-group
+root      1920  0.0  0.0      0     0 ?        I    Jan27   0:00 [kworker/1:0]
+root      2843  0.0  0.0      0     0 ?        I    01:21   0:00 [kworker/0:0]
+root      2844  0.0  0.0      0     0 ?        I    01:21   0:00 [kworker/3:0]
+root      3009  0.0  0.0 103864  7180 ?        Ss   02:47   0:00 sshd: tatsu [priv]
+tatsu     3032  0.0  0.0  76648  7624 ?        Ss   02:47   0:00 /lib/systemd/systemd --user
+tatsu     3033  0.0  0.0 257408  2624 ?        S    02:47   0:00 (sd-pam)
+tatsu     3142  0.0  0.0 103864  3392 ?        S    02:47   0:00 sshd: tatsu@pts/0
+tatsu     3143  0.0  0.0  51116  7092 pts/0    Ss   02:47   0:00 -zsh
+root      3520  0.0  0.0      0     0 ?        I    03:11   0:00 [kworker/u8:1]
+root      3555  0.0  0.0      0     0 ?        I    03:17   0:00 [kworker/2:0]
+root      3592  0.0  0.0      0     0 ?        I    03:37   0:00 [kworker/u8:2]
+root      3656  0.0  0.0      0     0 ?        I    03:47   0:00 [kworker/u8:0]
+tatsu     3678  0.0  0.0  38392  3676 pts/0    R+   03:48   0:00 ps aux
+    \end{verbatim}
+\end{itembox}
+
+\subsubsection{特定のプロセス名の取得}
+
+以上の結果に加えて，ユーザーが独自に起動したプロセスの情報を取得できているかを下に示す．
+評価としては，\verb|user|という無限ループするのみのユーザープロセスを起動し，その情報を取得する．
+
+以下に実行結果を示す．
+
+\begin{itembox}[l]{process-listからuserというプロセスを検索}
+    \begin{verbatim}
+./process-list 0xFFFFFFFF82413480 | grep user
+0x00000234ba96c0   4189 S: user
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{監視対象ホストのpsコマンドからuserというプロセスを検索}
+    \begin{verbatim}
+ps aux | grep "user"
+tatsu     3032  0.0  0.0  76648  7624 ?        Ss   02:47   0:00 /lib/systemd/systemd --user
+tatsu     4189  0.0  0.0   4508   808 pts/1    S+   03:51   0:00 ./user
+tatsu     4207  0.0  0.0  15452  1004 pts/0    S+   03:52   0:00 grep --color=auto --exclude-dir=.bzr --exclude-dir=CVS --exclude-dir=.git --exclude-dir=.hg --exclude-dir=.svn user
+    \end{verbatim}
+\end{itembox}
+
+プロセスIDとして4189を持つプロセスがどちらにも存在しているため，正しくプロセスの情報を取得できていることを示せた．
+
+\subsection{カーネルパニック発生時における評価}
 
 カーネルパニック発生時は既存の手法，プロセスとして起動する方法はだめだが，本研究における実装では問題なく動作することを示す．
-
-\section{時間}
-
-初期段階で時間はかかるが，それは問題ではない．大事なのは，どんなカーネルコンフィグを持つLinuxでも，解析が可能になるという点．
 
 \section{評価のまとめ}
 
