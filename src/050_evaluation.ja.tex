@@ -18,7 +18,7 @@
 
 \begin{table}[htbp]
     % \label{tab:}
-    \caption{実装を実行するホスト}
+    \caption{実装したプログラムを実行するホスト}
     \begin{center}
       \begin{tabular}{ll}
       \hline
@@ -51,7 +51,7 @@
 
 \subsection{前提}
 
-前述したように，本研究の実験においては，実装を実行するホストは，監視対象ホストに関して，Linuxカーネルのバージョンのみを情報として保持する．
+前述したように，本研究の実験においては，実装したプログラムを実行するホストは，監視対象ホストに関して，Linuxカーネルのバージョンのみを情報として保持する．
 
 \subsection{メモリダンプの取得}
 \label{subsection:eval_dump_mem}
@@ -96,12 +96,12 @@ python restore_kconfig.py str_list > restored_kconfig
     \end{verbatim}
 \end{itembox}
 
-ここで生成されたresotred_kconfigを，実装を実行するホストでカーネルをビルドする際に，.configとしてそのまま用いる．
+ここで生成されたresotred_kconfigを，実装したプログラムを実行するホストでカーネルをビルドする際に，.configとしてそのまま用いる．
 
 \subsection{復元したカーネルをプリプロセッサに通す}
 
 \ref{section:preprocess}で述べたように，\ref{subsection:eval_restore_kconfig}の結果得られたカーネルコンフィグを用いて，
-カーネルのビルドを実装を実行するホストで行う．
+カーネルのビルドを実装したプログラムを実行するホストで行う．
 
 \begin{itembox}[l]{build Linux kernel}
     \begin{verbatim}
@@ -544,7 +544,7 @@ sudo sh -c 'echo c > /proc/sysrq-trigger
 出力のうち，プロセスID 1318という行があるが，これが最後に正しく実行した命令である．
 カーネルパニック発生時にも，オペレーティングシステムが正常に動作していた時の情報を監視対象ホストから取得できることを示した．
 
-\begin{itembox}[l]{}
+\begin{itembox}[l]{1}
     \begin{verbatim}
 ./process-list 0xFFFFFFFF82413480
 init_vm_addr: 0xffffffff82413480
@@ -584,6 +584,12 @@ PhyAddr             PID STAT COMMAND
 0x000002325f16c0    845 S: systemd
 0x00000235d5db00    846 S: (sd-pam)
 0x000002337c96c0   1299 S: certbot
+    \end{verbatim}
+\end{itembox}
+
+
+\begin{itembox}[l]{2}
+    \begin{verbatim}
 0x000002361f0000      2 S: kthreadd
 0x000002361f5b00      3 D: kworker/0:0
 0x000002361f4440      4 D: kworker/0:0H
@@ -622,7 +628,12 @@ PhyAddr             PID STAT COMMAND
 0x00000235d5ad80     37 S: khungtaskd
 0x00000235d596c0     38 S: oom_reaper
 0x00000235d68000     39 D: writeback
-0x00000235d6db00     40 S: kcompactd0
+0x00000235d6db00     40 S:
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{3}
+    \begin{verbatim}
 0x00000235d6c440     41 S: ksmd
 0x00000235d6ad80     42 S: khugepaged
 0x000002363ddb00     43 D: crypto
@@ -661,6 +672,11 @@ PhyAddr             PID STAT COMMAND
 0x0000022ea15b00    190 S: scsi_eh_5
 0x0000022ea1c440    191 D: scsi_tmf_5
 0x0000022d852d80    192 D: kworker/u8:3
+    \end{verbatim}
+\end{itembox}
+
+\begin{itembox}[l]{4}
+    \begin{verbatim}
 0x0000022d8516c0    193 D: kworker/u8:4
 0x0000022d850000    194 D: kworker/u8:5
 0x0000022d855b00    195 D: kworker/u8:6

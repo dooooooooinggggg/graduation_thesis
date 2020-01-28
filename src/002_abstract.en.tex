@@ -13,9 +13,9 @@ The purpose of this study is to perform a memory search using the implementation
 
 As an implementation and evaluation, we show that, with limited information, a process list of the monitored host of 64bit Linux over the network can be obtained from the host, restored, and output.
 
-When restoring a process list by memory search using RDMA, in this research, search is performed starting from init \ _task, which is a process having a process ID of 0.
-init \ _task holds a task \ _struct structure, but the type information of the task \ _struct structure running on the monitored host must be inferred from the kernel config.
-In this research, acquisition of type information of task \ _struct structure, that is, calculation of offset of each field,
+When restoring a process list by memory search using RDMA, in this research, search is performed starting from init\_task, which is a process having a process ID of 0.
+init\_task holds a task\_struct structure, but the type information of the task\_struct structure running on the monitored host must be inferred from the kernel config.
+In this research, acquisition of type information of task\_struct structure, that is, calculation of offset of each field,
 This is achieved by analyzing the non-atomic memory dump on the host executing the implementation, collecting the kernel configuration values, and rebuilding.
 
 \end{eabstract}

@@ -9,6 +9,7 @@
 コアダンプを用いた静的解析や，kgdb，VMを用いた解析に関して述べた後，その手法の一つであるlibvmiについて述べる．
 
 \subsection{コアダンプを用いた静的解析}
+\label{subsubsection:core_dump}
 
 コアダンプとは，カーネルクラッシュダンプとも呼称する\cite{dump}が，
 この技術は，オペレーティングシステムが何かしらの原因でパニックに陥った際に，停止した時点のメモリの情報を2次記憶装置に書き出し，あとで解析できるようにするための機構である．
@@ -21,11 +22,11 @@ Linuxにおいては，\verb|kdump|と呼ばれる機構を通して，メモリ
 \subsubsection{Volatility}
 \label{subsubsection:Volatility}
 
-Volatilityの説明を書く．
+Volatility\cite{Volatility}とは，\ref{subsubsection:core_dump}などを用いて取得した静的なメモリダンプに対して，解析を行うソフトウェアである．
 
-\subsection{kgdb}
-
-kgdbの説明
+Volatilityでは，取得したメモリダンプがアトミックである前提のもと，オペレーティングシステムがどのような状態にあったかを解析するためのものである．
+Volatilityで使用されている手法は本研究において大いに参考になるが，このソフトウェアは，静的なファイルにのみ対応している．
+つまり，動作中のコンピュータに対する解析を行うことはできない．
 
 \subsection{VMを用いた解析}
 
@@ -53,7 +54,11 @@ QEMUの上で実行するlibvmi\cite{osti_1334968}というものがあり．こ
 
 \section{RDMA}
 
-ここにRDMAの説明をかく
+RDMA（Remote Direct Memory Address）とは，DMA（Direct Memory Access）\cite{amini1995system}転送をネットワーク越しに行う技術のことである．
+DMAは，メモリを読まれる対象のホストのマザーボード上のPCIeBusの上で動作する規格であるため，メモリを読まれる対象のホストのCPUコアを介さない通信が可能である．
+RDMAでは，ネットワーク越しにDMA messageを発行する技術であり，解析の際にCPUコアのリソースを使用しない，ゼロ・オーバーヘッド動作環境を実現することができる．
+さらに，監視対象ホストのオペレーティングシステムの状態に依存しない，つまり，電源さえ入っている状態であれば，動作中であろうとカーネルパニックが発生している状態であろうと，
+DMA messageを発行し，結果を得ることが可能となる．
 
 \begin{figure}[htbp]
     \caption{PCI Express}
@@ -66,3 +71,10 @@ QEMUの上で実行するlibvmi\cite{osti_1334968}というものがあり．こ
 \subsection{InfinibandにおけるRDMA実装}
 
 制約がかなり厳しく，本研究の用途には適さないということを書く
+
+RDMAの実装として，Infiniband\cite{islam2012high}におけるRDMA実装がある．
+
+しかし，infinibandにおけるRDMA\cite{infiniband-rdma}では，実際のパケットの送受信を行うのは，Host Channel Adapter(HCA)であるが，このHCAがアクセスできる領域はあらかじめMemory Regionとして監視対象ホストのOSにされている．
+アクセスできる領域の仮想アドレスと物理アドレスの変換表はHCAが保持し，変換した上でアクセスする．
+そのため，infiniband RDMAでは規格上，許可された仮想アドレス空間の指定しかできず，メモリ空間の全てを参照することはできない．
+したがって，infiniband RDMAでは，オペレーティングシステム全体の監視・解析を行うことは難しい．
