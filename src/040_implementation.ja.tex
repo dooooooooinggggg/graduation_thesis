@@ -406,7 +406,7 @@ xxd dump | grep swapper/0
 \end{itembox}
 
 この値から，\ref{section:define_task\_struct}にて求めた，commフィールドの値を引き，
-そこからさらに，ブートローダの使用領域である128KBを足すことで，init_taskの先頭アドレスを算出する．
+そこからさらに，ブートローダの使用領域である128KBを足すことで，init\_taskの先頭アドレスを算出する．
 
 % 131072 = 128KB!!
 % 128KBはBIOSの領域？
@@ -417,7 +417,7 @@ xxd dump | grep swapper/0
 \section{プロセス一覧の表示}
 \label{subsection:process-list}
 
-\ref{section:preprocess}で得ることができたソースをもとに，process-listを改造したものに関する説明をここに書く（もう動いてはいるので，整理して書く．）
+% \ref{section:preprocess}で得ることができたソースをもとに，process-listを改造したものに関する説明をここに書く（もう動いてはいるので，整理して書く．）
 
 以上の実装により得られた値を用いて，\ref{subsection:upa_process}で述べたprocess-list.cのうち，
 監視対象ホストの環境に依存した部分を書き換えることで，プロセスの一覧を取得する．
