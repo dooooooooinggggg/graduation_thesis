@@ -8,12 +8,14 @@ In an emergency, for example, when a kernel panic occurs, the core dump is analy
 
 However, in managing a large number of physical computers, it is difficult to introduce various solutions to address the problem.
 
-Therefore, in this research, under the NetTLP \ cite {246316} environment, which is a debugging environment that operates even if the operating system is stopped as long as the power is on, for a large number of computers,
-The purpose of this study is to perform a memory search using the RDMA function implemented in NetTLP, and to restore the context of the operating system of a physical computer over a running network.
+Therefore, in this research, under the NetTLP environment, which is a debugging environment that operates even if the operating system is stopped as long as the power is on, for a large number of computers,
+The purpose of this study is to perform a memory search using the implementation of RDMA implemented in NetTLP and to restore the context of the operating system of a physical computer over a running network.
 
-As an implementation and evaluation for the purpose, we show that the process list of the monitored host can be restored with limited information.
+As an implementation and evaluation, we show that, with limited information, a process list of the monitored host of 64bit Linux over the network can be obtained from the host, restored, and output.
 
-Also, when restoring the process list from only operating system version information and non-atomic memory dumps,
-A method to derive internal values ​​that differ for each machine and to absorb the differences for each machine was also shown.
+When restoring a process list by memory search using RDMA, in this research, search is performed starting from init \ _task, which is a process having a process ID of 0.
+init \ _task holds a task \ _struct structure, but the type information of the task \ _struct structure running on the monitored host must be inferred from the kernel config.
+In this research, acquisition of type information of task \ _struct structure, that is, calculation of offset of each field,
+This is achieved by analyzing the non-atomic memory dump on the host executing the implementation, collecting the kernel configuration values, and rebuilding.
 
 \end{eabstract}

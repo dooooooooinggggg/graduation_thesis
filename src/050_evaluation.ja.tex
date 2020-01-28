@@ -224,9 +224,21 @@ $ sudo cat kallsyms | grep "D init_task"
 \label{subsection:exec_process_list}
 
 \ref{section:eval}によって求めた値を用いて，process-list.cを実行する．
-実行結果は以下である．
+実行の際は，引数として，\ref{subsection:eval_init_task_head}で導出した値を実行時に渡す．
 
 \begin{itembox}[l]{process-listの出力}
+    \begin{verbatim}
+./process-list 0xFFFFFFFF82413480
+    \end{verbatim}
+\end{itembox}
+
+実行結果は，\ref{itembox:result-process-list}に添付してあるが，プロセスID 0を持つプロセスに始まり，全てのプロセスを取得できている．
+
+比較対象として，監視対象ホストにて実行したpsコマンドの出力結果を用意した．
+実行結果は，\ref{itembox:result-ps}に添付してあるが，この結果と先ほど\ref{itembox:result-process-list}で取得した結果を比較してみると一致していることがわかる．
+
+\begin{itembox}[l]{process-listの出力}
+    \label{itembox:result-process-list}
     \begin{verbatim}
 $ ./process-list 0xFFFFFFFF82413480
 
@@ -351,6 +363,7 @@ PhyAddr             PID STAT COMMAND
 \end{itembox}
 
 \begin{itembox}[l]{監視対象ホストにおけるpsコマンドの結果}
+    \label{itembox:result-ps}
     \begin{verbatim}
 $ ps aux
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
@@ -476,9 +489,25 @@ tatsu     3678  0.0  0.0  38392  3676 pts/0    R+   03:48   0:00 ps aux
 \subsubsection{特定のプロセス名の取得}
 
 以上の結果に加えて，ユーザーが独自に起動したプロセスの情報を取得できているかを下に示す．
-評価としては，\verb|user|という無限ループするのみのユーザープロセスを起動し，その情報を取得する．
 
-以下に実行結果を示す．
+この評価では，特定のプロセスに関する名前とプロセスIDに関する情報が正しく取得できているかを示す．
+手法として，\verb|user|という無限ループするのみのユーザープロセスを起動し，そのプロセスに関する行を，検索し取得する．
+取得した情報のうち，プロセスIDが一致していることを示す．
+
+\begin{itembox}[l]{監視対象ホストのpsコマンドからuserというプロセスを検索}
+    \begin{verbatim}
+ps aux | grep "user"
+tatsu     3032  0.0  0.0  76648  7624 ?        Ss   02:47   0:00
+/lib/systemd/systemd --user
+tatsu     4189  0.0  0.0   4508   808 pts/1    S+   03:51   0:00 ./user
+tatsu     4207  0.0  0.0  15452  1004 pts/0    S+   03:52   0:00
+grep --color=auto --exclude-dir=.bzr --exclude-dir=CVS --exclude-dir=.git
+--exclude-dir=.hg --exclude-dir=.svn user
+    \end{verbatim}
+\end{itembox}
+
+監視対象ホストでpsコマンドを実行した結果，userというコマンド名を持つプロセスのIDは4189であることがわかる．
+一方で，process-listの出力結果からuserという文字列で検索をかけた結果以下のような行が抽出できた．
 
 \begin{itembox}[l]{process-listからuserというプロセスを検索}
     \begin{verbatim}
@@ -487,16 +516,9 @@ tatsu     3678  0.0  0.0  38392  3676 pts/0    R+   03:48   0:00 ps aux
     \end{verbatim}
 \end{itembox}
 
-\begin{itembox}[l]{監視対象ホストのpsコマンドからuserというプロセスを検索}
-    \begin{verbatim}
-ps aux | grep "user"
-tatsu     3032  0.0  0.0  76648  7624 ?        Ss   02:47   0:00 /lib/systemd/systemd --user
-tatsu     4189  0.0  0.0   4508   808 pts/1    S+   03:51   0:00 ./user
-tatsu     4207  0.0  0.0  15452  1004 pts/0    S+   03:52   0:00 grep --color=auto --exclude-dir=.bzr --exclude-dir=CVS --exclude-dir=.git --exclude-dir=.hg --exclude-dir=.svn user
-    \end{verbatim}
-\end{itembox}
+プロセスIDとして4189を持つプロセスを取得できていることがわかる．
 
-プロセスIDとして4189を持つプロセスがどちらにも存在しているため，正しくプロセスの情報を取得できていることを示せた．
+userという名前を持つプロセスのプロセスIDが一致していることが確認できたため，process-list.cが正しくプロセスの情報を取得できていることを示した
 
 \subsection{カーネルパニック発生時における評価}
 
@@ -504,9 +526,9 @@ tatsu     4207  0.0  0.0  15452  1004 pts/0    S+   03:52   0:00 grep --color=au
 
 \section{評価のまとめ}
 
-本研究の実装に対する評価として，\ref{chap:implementation}章で述べた構成の元，ネットワーク越しに存在している物理的なマシンのプロセス情報の一覧を正しく取得することで，
-RDMAを用いたメモリ探索を行うことで，オペレーティングシステムの復元をすることが可能であることを示した．
+本研究の実装に対する評価として，オペレーティングシステムのコンテキストの復元を行う上で，監視対象ホストのカーネルコンフィグに依存する情報を正しく復元できていることを示した．
 
-また，オペレーティングシステムのコンテキストの復元を行う上で，監視対象ホストのカーネルコンフィグに依存する情報を正しく復元できていることを示した．
+また，\ref{chap:implementation}章で述べた構成の元，ネットワーク越しに存在している物理的なマシンのプロセス情報の一覧を正しく取得することで，
+RDMAを用いたメモリ探索を行うことで，オペレーティングシステムの復元をすることが可能であることを示した．
 
 % カーネルパニックのくだりはどうする．
