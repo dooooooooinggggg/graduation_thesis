@@ -386,7 +386,7 @@ $ ./print_offset
 \subsection{init\_taskの開始アドレスの算出}
 \label{subsection:find_init_task}
 
-本セクションでは，プロセスIDとして0を持つプロセスである，init\_taskの先頭アドレスを算出する．
+本セクションでは，プロセスIDとして0を持つプロセスである，init\_taskの先頭開始アドレスの算出開始アドレスの算出アドレスを算出する．
 
 init\_taskの開始アドレスは，監視対象ホストの，/proc/kallsymsに記述されているが，その開始アドレスは本研究の実験環境においては，
 実装したプログラムを実行するホストは情報として持っていない．そのため，後述する手法を用いてその開始アドレスを算出する．
@@ -405,7 +405,7 @@ xxd dump | grep swapper/0
     \end{verbatim}
 \end{itembox}
 
-この値から，\ref{section:define_task\_struct}節にて求めた，commフィールドの値を引き，
+この値から，\ref{section:define_task_struct}節にて求めた，commフィールドの値を引き，
 そこからさらに，ブートローダの使用領域である128KBを足すことで，init\_taskの先頭アドレスを算出する．
 
 % 131072 = 128KB!!
