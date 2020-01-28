@@ -56,7 +56,7 @@
 \subsection{メモリダンプの取得}
 \label{subsection:eval_dump_mem}
 
-\ref{section:mem_dump}で述べた実装である，dump_memを用いて，メモリダンプを取得する．
+\ref{section:mem_dump}節で述べた実装である，dump_memを用いて，メモリダンプを取得する．
 
 \begin{itembox}[l]{実行方法}
     \begin{verbatim}
@@ -82,7 +82,7 @@ $ ls -alh
 \subsection{カーネルコンフィグを復元する}
 \label{subsection:eval_restore_kconfig}
 
-取得してきたメモリダンプに対して，\ref{section:restore_kconfig}で述べたように，処理を施し，ビルド時のカーネルコンフィグを復元する．
+取得してきたメモリダンプに対して，\ref{section:restore_kconfig}節で述べたように，処理を施し，ビルド時のカーネルコンフィグを復元する．
 
 \begin{itembox}[l]{strings}
     \begin{verbatim}
@@ -100,7 +100,7 @@ python restore_kconfig.py str_list > restored_kconfig
 
 \subsection{復元したカーネルをプリプロセッサに通す}
 
-\ref{section:preprocess}で述べたように，\ref{subsection:eval_restore_kconfig}の結果得られたカーネルコンフィグを用いて，
+\ref{section:preprocess}節で述べたように，\ref{subsection:eval_restore_kconfig}節の結果得られたカーネルコンフィグを用いて，
 カーネルのビルドを実装したプログラムを実行するホストで行う．
 
 \begin{itembox}[l]{build Linux kernel}
@@ -110,8 +110,8 @@ cp /path/to/restored_kconfig .config
     \end{verbatim}
 \end{itembox}
 
-その際に，\ref{section:preprocess}で述べたように，プリプロセッサによる処理である中間ファイルを残す設定とするため，
-Makefileに変更を加える．本研究では，監視対象ホストのバージョンは，Linux 4.15.0-74-genericでありその変更は，\ref{section:preprocess}で述べたものと同じである．
+その際に，\ref{section:preprocess}節で述べたように，プリプロセッサによる処理である中間ファイルを残す設定とするため，
+Makefileに変更を加える．本研究では，監視対象ホストのバージョンは，Linux 4.15.0-74-genericでありその変更は，\ref{section:preprocess}節で述べたものと同じである．
 
 変更したのちに，以下のコマンドを実行し，ビルドを開始する．
 
@@ -134,7 +134,7 @@ $ du -shc linux-source-4.15.0
 \subsection{実行環境におけるinit_taskの先頭アドレス}
 \label{subsection:eval_init_task_head}
 
-\ref{section:define_task_struct}で述べた内容に基づいて，作成したprint_offsetを実行した結果は以下となった．
+\ref{section:define_task_struct}節で述べた内容に基づいて，作成したprint_offsetを実行した結果は以下となった．
 
 \begin{itembox}[l]{名前考える}
     \begin{verbatim}
@@ -150,9 +150,9 @@ $ ./print_offset_restore
     \end{verbatim}
 \end{itembox}
 
-この結果をもとに，\ref{subsection:eval_init_task_head}にて，init_taskの先頭アドレスを算出する．
+この結果をもとに，\ref{subsection:eval_init_task_head}節にて，init\_taskの先頭アドレスを算出する．
 
-\ref{subsection:eval_dump_mem}で取得したメモリダンプから，\ref{subsection:find_init_task}で述べたように，swapper/0という文字列を以下のコマンドで検索を行う．
+\ref{subsection:eval_dump_mem}節で取得したメモリダンプから，\ref{subsection:find_init_task}節で述べたように，swapper/0という文字列を以下のコマンドで検索を行う．
 
 \begin{itembox}[l]{find swapper/0}
     \begin{verbatim}
@@ -162,7 +162,7 @@ $ xxd dump | grep swapper/0
     \end{verbatim}
 \end{itembox}
 
-以上の結果となった．このうち一つ目の値を取り出すと，023f3ed0であるが，\ref{subsection:find_init_task}に倣って，
+以上の結果となった．このうち一つ目の値を取り出すと，023f3ed0であるが，\ref{subsection:find_init_task}節に倣って，
 0x023f3ed0の10進表記である37699280から，commフィールドのオフセットである2640を減算し，128KBのバイト数である131072を加算する．
 その結果，得られた値は，37699280-2640+131072=37827712 となる．
 この値は物理アドレスであるため，これをカーネルの仮想アドレスに変換する．
@@ -190,13 +190,13 @@ static inline unsigned long __phys_addr_nodebug(unsigned long x)
 Linuxカーネルで物理アドレスが0からのストレートマップとなるのは，上述のソースコード内における三項演算子のうち，条件式が真となる場合である．
 この関数から，37827712の16進数表記である0x2413480という結果が帰る場合は条件式が真となる場合であるため，カーネル空間の仮想アドレスにおいて，
 37827712という物理アドレスに対応する仮想アドレスは， 0x2413480 + phys\_base + 0xffffffff80000000 の結果である 0xffffffff82413480 となり，
-これが本研究における監視対象ホストのinit_taskの仮想アドレスと推定する．
+これが本研究における監視対象ホストのinit\_taskの仮想アドレスと推定する．
 また，この値をprocess-list.cの引数として使用する．
 
 \subsection{process-list.cの実行}
 
-\ref{subsection:eval_init_task_head}で導いた値を引数として，以下のようにコマンドを実行する．
-実行結果については，\ref{subsection:exec_process_list}で述べる．
+\ref{subsection:eval_init_task_head}節で導いた値を引数として，以下のようにコマンドを実行する．
+実行結果については，\ref{subsection:exec_process_list}節で述べる．
 
 \begin{itembox}[l]{process-list.cの実行}
     \begin{verbatim}
@@ -208,7 +208,7 @@ Linuxカーネルで物理アドレスが0からのストレートマップと�
 
 \subsection{値が正しいこと}
 
-\ref{section:eval}における評価手順において，導出した値として，init_taskの仮想アドレスが正しいかどうかを評価する．
+\ref{section:eval}節における評価手順において，導出した値として，init\_taskの仮想アドレスが正しいかどうかを評価する．
 評価手法としては，実験の際に導いた0xffffffff82413480という値が監視対象ホストの値と等しいかどうかを，監視対象ホストのkallsymsを参照することで比較する．
 
 比較結果は以下であり，導出した0xffffffff82413480という値が正しい値であることを示した．
@@ -223,8 +223,8 @@ $ sudo cat kallsyms | grep "D init_task"
 \subsection{通常稼働中における評価}
 \label{subsection:exec_process_list}
 
-\ref{section:eval}によって求めた値を用いて，process-list.cを実行する．
-実行の際は，引数として，\ref{subsection:eval_init_task_head}で導出した値を実行時に渡す．
+\ref{section:eval}節によって求めた値を用いて，process-list.cを実行する．
+実行の際は，引数として，\ref{subsection:eval_init_task_head}節で導出した値を実行時に渡す．
 
 \begin{itembox}[l]{process-listの出力}
     \begin{verbatim}
