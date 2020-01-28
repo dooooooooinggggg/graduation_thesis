@@ -100,27 +100,6 @@ kconfigの結果によって，フィールドが存在するか否か，また�
 Linuxカーネルのバージョンは，実装ホストは持っている情報とする．
 \ref{section:want}で述べたもののうち，Linuxカーネルのバージョンは通知することとする
 
-また，KASLR（kernel address space layout randomization）を無効にしてある．理由については，\ref{subsection:kaslr}にて述べる．
-
-\subsection{KASLR}
-\label{subsection:kaslr}
-
-KASLRの簡単な説明と，無効にする理由と無効にしても良い理由を書く．
-
-KASLRとは，kernel address space layout randomizationの略であり，カーネル領域における仮想アドレス空間のランダム化に関する仕組みのことである．
-基本的な仕組みは，カーネルに限らず，プロセスの仮想アドレス空間のランダム化を実現する，ASLR(address space layout randomization)がある．
-ASLRでは，実行ファイル内に存在するコードセグメントの仮想アドレスを，プロセスの実行のたびにランダムにする．
-
-% todo: あれ，どのセグメントだっけ
-ASLRが無効な状態でプロセスを実行すると，コードセグメントなどが常に一定の仮想アドレス空間にロードされるため，攻撃者にとって，仮想アドレスの推測が容易になってしまう．
-これを防ぐための機構がASLRである．
-
-KASLRでは，この考え方をカーネルの起動時にも適用するようにしたものである．
-
-% todo: ここに説明を加筆
-
-% KASLRは，本研究においては，有効にしてもいい．ちょっと待て．
-
 \section{実装の全体}
 
 ダンプしてくるということを書く．物理アドレスのマッピングに関しても書く
