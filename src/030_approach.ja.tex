@@ -51,13 +51,13 @@ task\_struct構造体をはじめとして，Linuxカーネルの変数や型，
 CPUレジスタの値は直接知ることができないため，例えばプロセスの一覧を取得したい場合は，コンテキストスイッチ時に退避された値を辿っていく必要がある．
 しかし，上述の通りtask\_structはビルドされた際のカーネルコンフィグによって，どのフィールドが先頭アドレスからどのオフセットに保持されているかは変動する．
 
-\begin{figure}[htbp]
-    \caption{Linuxにおけるmmu}
-    \label{fig:mmu}
-    \begin{center}
-        \includegraphics[bb=0 0 1000 360,width=15cm]{img/tegaki/paging.png}
-    \end{center}
-\end{figure}
+% \begin{figure}[htbp]
+%     \caption{Linuxにおけるmmu}
+%     \label{fig:mmu}
+%     \begin{center}
+%         \includegraphics[bb=0 0 1000 360,width=15cm]{img/tegaki/paging.png}
+%     \end{center}
+% \end{figure}
 
 \section{本研究で保持する情報}
 \label{section:info}

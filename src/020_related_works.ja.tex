@@ -38,13 +38,13 @@ qemuではプロセッサだけでなく，マウスやキーボードなどの�
 
 この手法では，\ref{fig:vm_arch}に示したように，ホストOSの上でqemuを通してゲストOSを実行する．
 
-\begin{figure}[htbp]
-    \caption{監視対象ホストをVMとして起動する場合}
-    \label{fig:vm_arch}
-    \begin{center}
-        \includegraphics[bb=0 0 1000 340,width=15cm]{img/tegaki/01_vm.png}
-    \end{center}
-\end{figure}
+% \begin{figure}[htbp]
+%     \caption{監視対象ホストをVMとして起動する場合}
+%     \label{fig:vm_arch}
+%     \begin{center}
+%         \includegraphics[bb=0 0 1000 340,width=15cm]{img/tegaki/01_vm.png}
+%     \end{center}
+% \end{figure}
 
 \subsubsection{libvmi}
 
@@ -60,13 +60,13 @@ RDMAでは，ネットワーク越しにDMA messageを発行する技術であ�
 さらに，監視対象ホストのオペレーティングシステムの状態に依存しない，つまり，電源さえ入っている状態であれば，動作中であろうとカーネルパニックが発生している状態であろうと，
 DMA messageを発行し，結果を得ることが可能となる．
 
-\begin{figure}[htbp]
-    \caption{PCI Express}
-    \label{fig:zentai}
-    \begin{center}
-        \includegraphics[bb=0 0 1000 400,width=15cm]{img/tegaki/pcie.png}
-    \end{center}
-\end{figure}
+% \begin{figure}[htbp]
+%     \caption{PCI Express}
+%     \label{fig:zentai}
+%     \begin{center}
+%         \includegraphics[bb=0 0 1000 400,width=15cm]{img/tegaki/pcie.png}
+%     \end{center}
+% \end{figure}
 
 \subsection{InfinibandにおけるRDMA実装}
 
