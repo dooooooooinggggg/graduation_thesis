@@ -1,7 +1,7 @@
 \chapter{関連技術}
 \label{chap:related_works}
 
-本章では，本研究における手法を選ぶに当たって，既存の基盤手法の比較と，基盤技術として使用するRDMA（Remote Direct Memory Address）に関して述べる．
+本章では，本研究における手法を選ぶに当たって，既存の基盤手法の比較と，基盤技術として使用するRDMA（Remote Direct Memory Access）に関して述べる．
 
 \section{オペレーティングシステム解析手段}
 
@@ -56,7 +56,7 @@ libvmiは仮想化のプラットフォームは，KVM/QEMU及びXenに対応し
 
 \section{RDMA}
 
-RDMA（Remote Direct Memory Address）とは，DMA（Direct Memory Access）\cite{amini1995system}転送をネットワーク越しに行う技術のことである．
+RDMA（Remote Direct Memory Access）とは，DMA（Direct Memory Access）\cite{amini1995system}転送をネットワーク越しに行う技術のことである．
 DMAは，メモリを読まれる対象のホストのマザーボード上のPCIeBusの上で動作する規格であるため，メモリを読まれる対象のホストのCPUコアを介さない通信が可能である．
 RDMAでは，ネットワーク越しにDMA messageを発行する技術であり，解析の際にCPUコアのリソースを使用しない，ゼロ・オーバーヘッド動作環境を実現することができる．
 さらに，監視対象ホストのオペレーティングシステムの状態に依存しない，つまり，電源さえ入っている状態であれば，動作中であろうとカーネルパニックが発生している状態であろうと，
@@ -76,7 +76,7 @@ DMA messageを発行し，結果を得ることが可能となる．
 
 RDMAの実装として，Infiniband\cite{islam2012high}におけるRDMA実装がある．
 
-しかし，infinibandにおけるRDMA\cite{infiniband-rdma}では，実際のパケットの送受信を行うのは，Host Channel Adapter(HCA)であるが，このHCAがアクセスできる領域はあらかじめMemory Regionとして監視対象ホストのOSにされている．
+しかし，infinibandにおけるRDMA\cite{infiniband-rdma}では，実際のパケットの送受信を行うのは，Host Channel Adapter(HCA)であるが，このHCAがアクセスできる領域はあらかじめMemory Regionとして監視対象ホストのOSに登録されている．
 アクセスできる領域の仮想アドレスと物理アドレスの変換表はHCAが保持し，変換した上でアクセスする．
 そのため，infiniband RDMAでは規格上，許可された仮想アドレス空間の指定しかできず，メモリ空間の全てを参照することはできない．
 したがって，infiniband RDMAでは，オペレーティングシステム全体の監視・解析を行うことは難しい．
